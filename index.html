@@ -296,8 +296,18 @@
     // =========================================================================
     let segments = [];     // { x1, y1, x2, y2, nx, ny, thick }
     let brightness = null; // Float32Array, same length as segments
+    let thickClass = null; // Uint8Array, 0-3 thickness class per segment
     let somaList = [];     // { x, y, segStart, segEnd }
     let lightAngle = 0;    // radians, current sweep position
+
+    // Batched rendering: 24 brightness buckets x 4 thickness classes = 96 max stroke calls
+    const BRIGHT_BUCKETS = 24;
+    const THICK_CLASSES = 4;
+    const THICK_WIDTHS = [0.15, 0.45, 1.0, 1.9]; // representative lineWidth per class
+    const NUM_DRAW_BUCKETS = BRIGHT_BUCKETS * THICK_CLASSES;
+    // Reusable bucket index arrays — avoids allocation per frame
+    const _bucketArrays = new Array(NUM_DRAW_BUCKETS);
+    for (let i = 0; i < NUM_DRAW_BUCKETS; i++) _bucketArrays[i] = [];
 
     // Bloom: offscreen canvas (NOT in DOM), blurred via ctx.filter
     let bloomCanvas, bloomCtx;
@@ -415,14 +425,22 @@
           growBranch(soma.x, soma.y, angle, baseLen, params.branchDepth, 2.5, rng, noiseZ, si);
         }
         somaList.push({ x: soma.x, y: soma.y, segStart, segEnd: segments.length });
-        console.log(`  soma[${si}]: ${numPrimary} axons, ${segments.length - segStart} segments`);
       }
 
-      // Allocate brightness array
-      brightness = new Float32Array(segments.length);
+      // Allocate brightness array and thickness classes
+      const n = segments.length;
+      brightness = new Float32Array(n);
+      thickClass = new Uint8Array(n);
+      for (let i = 0; i < n; i++) {
+        const t = segments[i].thick;
+        if (t > 1.4) thickClass[i] = 3;
+        else if (t > 0.7) thickClass[i] = 2;
+        else if (t > 0.25) thickClass[i] = 1;
+        else thickClass[i] = 0;
+      }
 
-      console.log(`[Gen] TOTAL segments: ${segments.length}`);
-      document.getElementById('seg-count').textContent = segments.length.toLocaleString() + ' segments';
+      console.log(`[Gen] TOTAL segments: ${n}`);
+      document.getElementById('seg-count').textContent = n.toLocaleString() + ' segments';
     }
 
     function growBranch(x, y, angle, length, depth, thickness, rng, noiseZ, somaIdx) {
@@ -536,6 +554,8 @@
 
     // =========================================================================
     // p5.js — DRAW (hot loop — no geometry generation, only brightness + render)
+    // Batched rendering: segments grouped by (brightness bucket × thickness class)
+    // reduces ~7000 stroke() calls to ~80-100
     // =========================================================================
     let dotSigns = null;
 
@@ -585,44 +605,75 @@
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, width, height);
 
-      // --- Draw segments with screen (additive) blending ---
+      // --- Draw segments with screen blending, BATCHED by (brightness, thickness) ---
       ctx.globalCompositeOperation = 'screen';
       ctx.lineCap = 'round';
 
-      if (colorMode === 'gold') {
-        // Fast path: use LUT, set globalAlpha per segment
-        for (let i = 0; i < n; i++) {
-          const b = brightness[i];
-          if (b < 0.008) continue;
+      // Clear bucket arrays
+      for (let i = 0; i < NUM_DRAW_BUCKETS; i++) _bucketArrays[i].length = 0;
 
-          const seg = segments[i];
-          const bucket = (b * 127) | 0;
-          ctx.strokeStyle = GOLD_LUT[bucket];
-          ctx.globalAlpha = GOLD_ALPHA_LUT[bucket];
-          ctx.lineWidth = seg.thick * (0.4 + b * 1.0);
-          ctx.beginPath();
-          ctx.moveTo(seg.x1, seg.y1);
-          ctx.lineTo(seg.x2, seg.y2);
-          ctx.stroke();
+      // Single pass: assign each visible segment to its bucket
+      for (let i = 0; i < n; i++) {
+        const b = brightness[i];
+        if (b < 0.02) continue;
+        const bBucket = Math.min((b * BRIGHT_BUCKETS) | 0, BRIGHT_BUCKETS - 1);
+        _bucketArrays[bBucket * THICK_CLASSES + thickClass[i]].push(i);
+      }
+
+      // Stroke each non-empty bucket (gold mode — batched; signal mode — per-segment fallback)
+      if (colorMode === 'gold') {
+        for (let b = 0; b < BRIGHT_BUCKETS; b++) {
+          const bVal = (b + 0.5) / BRIGHT_BUCKETS;
+          const lutIdx = (bVal * 127) | 0;
+          ctx.strokeStyle = GOLD_LUT[lutIdx];
+          ctx.globalAlpha = GOLD_ALPHA_LUT[lutIdx];
+
+          for (let t = 0; t < THICK_CLASSES; t++) {
+            const indices = _bucketArrays[b * THICK_CLASSES + t];
+            if (indices.length === 0) continue;
+
+            ctx.lineWidth = THICK_WIDTHS[t] * (0.4 + bVal * 1.0);
+            ctx.beginPath();
+            for (let j = 0; j < indices.length; j++) {
+              const seg = segments[indices[j]];
+              ctx.moveTo(seg.x1, seg.y1);
+              ctx.lineTo(seg.x2, seg.y2);
+            }
+            ctx.stroke();
+          }
         }
-        ctx.globalAlpha = 1.0;
       } else {
-        // Neural signal mode
-        for (let i = 0; i < n; i++) {
-          const b = brightness[i];
-          if (b < 0.008) continue;
-          const seg = segments[i];
-          ctx.strokeStyle = signalColor(b, dotSigns[i]);
-          ctx.lineWidth = seg.thick * (0.4 + b * 1.0);
-          ctx.beginPath();
-          ctx.moveTo(seg.x1, seg.y1);
-          ctx.lineTo(seg.x2, seg.y2);
-          ctx.stroke();
+        // Neural signal: batch by brightness bucket + thickness, use mid-bucket color
+        // Split warm (positive dot) and cool (negative dot) into separate passes
+        for (let pass = 0; pass < 2; pass++) {
+          const dotPositive = pass === 0;
+          for (let b = 0; b < BRIGHT_BUCKETS; b++) {
+            const bVal = (b + 0.5) / BRIGHT_BUCKETS;
+            const dotVal = dotPositive ? 0.7 : -0.7;
+            ctx.strokeStyle = signalColor(bVal, dotVal);
+
+            for (let t = 0; t < THICK_CLASSES; t++) {
+              const indices = _bucketArrays[b * THICK_CLASSES + t];
+              if (indices.length === 0) continue;
+
+              ctx.lineWidth = THICK_WIDTHS[t] * (0.4 + bVal * 1.0);
+              ctx.beginPath();
+              for (let j = 0; j < indices.length; j++) {
+                const idx = indices[j];
+                if ((dotSigns[idx] >= 0) !== dotPositive) continue;
+                const seg = segments[idx];
+                ctx.moveTo(seg.x1, seg.y1);
+                ctx.lineTo(seg.x2, seg.y2);
+              }
+              ctx.stroke();
+            }
+          }
         }
       }
 
-      // --- Draw soma nodes ---
       ctx.globalAlpha = 1.0;
+
+      // --- Draw soma nodes ---
       for (const soma of somaList) {
         let maxB = 0;
         const end = Math.min(soma.segEnd, soma.segStart + 30);
@@ -634,17 +685,17 @@
         if (colorMode === 'gold') {
           const bucket = (maxB * 127) | 0;
           ctx.fillStyle = GOLD_LUT[bucket];
-          ctx.globalAlpha = maxB;
         } else {
-          ctx.fillStyle = `rgba(200,200,220,${maxB})`;
+          ctx.fillStyle = `rgba(200,200,220,1)`;
         }
+        ctx.globalAlpha = maxB;
         ctx.beginPath();
         ctx.arc(soma.x, soma.y, 2.5 + maxB * 3, 0, Math.PI * 2);
         ctx.fill();
 
         if (maxB > 0.35) {
           ctx.globalAlpha = maxB * 0.25;
-          ctx.fillStyle = GOLD_LUT[127];
+          ctx.fillStyle = colorMode === 'gold' ? GOLD_LUT[127] : 'rgb(200,220,255)';
           ctx.beginPath();
           ctx.arc(soma.x, soma.y, 6 + maxB * 8, 0, Math.PI * 2);
           ctx.fill();
@@ -657,16 +708,14 @@
         const bw = bloomCanvas.width;
         const bh = bloomCanvas.height;
 
-        // Only update bloom buffer every 2 frames for performance
-        if (_frameCounter % 2 === 0) {
+        // Update bloom buffer every 3 frames
+        if (_frameCounter % 3 === 0) {
           bloomCtx.clearRect(0, 0, bw, bh);
-          // GPU-accelerated blur via ctx.filter (applied during drawImage)
           bloomCtx.filter = 'blur(4px)';
           bloomCtx.drawImage(ctx.canvas, 0, 0, bw, bh);
           bloomCtx.filter = 'none';
         }
 
-        // Composite bloom back to main canvas — additive, scaled up (upscale softens further)
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = params.bloomIntensity * 0.45;
         ctx.drawImage(bloomCanvas, 0, 0, width, height);
