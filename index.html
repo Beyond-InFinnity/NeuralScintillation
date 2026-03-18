@@ -184,6 +184,20 @@
     const _buckets = new Array(NUM_DRAW_BUCKETS);
     for (let i = 0; i < NUM_DRAW_BUCKETS; i++) _buckets[i] = [];
 
+    // Gaussian LUT — eliminates Math.exp from 70k-iteration hot loop
+    const GAUSS_LUT = new Float32Array(256);
+    let _gaussSigmaCached = -1;
+    function rebuildGaussLUT() {
+      const sigma = params.glowWidth / 90;
+      if (sigma === _gaussSigmaCached) return;
+      _gaussSigmaCached = sigma;
+      const inv2s2 = 1 / (2 * sigma * sigma);
+      for (let i = 0; i < 256; i++) {
+        const dev = i / 255;
+        GAUSS_LUT[i] = Math.exp(-dev * dev * inv2s2) * (1 - dev);
+      }
+    }
+
     // Bloom
     let bloomCanvas, bloomCtx;
 
@@ -495,17 +509,17 @@
       if (lightAngle > Math.PI * 2) lightAngle -= Math.PI * 2;
       const ldx = Math.cos(lightAngle), ldy = Math.sin(lightAngle);
 
-      // Anisotropic brightness
-      const sigma = params.glowWidth / 90;
-      const inv2s2 = 1 / (2 * sigma * sigma);
+      // Anisotropic brightness — Gaussian LUT (no Math.exp in loop)
+      rebuildGaussLUT();
+      const decay = params.decayRate;
       for (let i = 0; i < n; i++) {
         const seg = segments[i];
         const dot = seg.nx * ldx + seg.ny * ldy;
-        const ad = Math.abs(dot);
         dotSigns[i] = dot;
-        const dev = 1 - ad;
-        const inst = Math.exp(-dev * dev * inv2s2) * ad;
-        brightness[i] = Math.max(brightness[i] * params.decayRate, inst);
+        const devIdx = ((1 - (dot < 0 ? -dot : dot)) * 255 + 0.5) | 0;
+        const inst = GAUSS_LUT[devIdx < 0 ? 0 : devIdx > 255 ? 255 : devIdx];
+        const prev = brightness[i] * decay;
+        brightness[i] = inst > prev ? inst : prev;
       }
 
       const isGolgi = colorMode === 'golgi';
@@ -516,8 +530,8 @@
       ctx.fillStyle = isGolgi ? '#d4c4a0' : '#0a0a0a';
       ctx.fillRect(0, 0, width, height);
 
-      if (!isGolgi) ctx.globalCompositeOperation = 'screen';
-      ctx.lineCap = 'round';
+      if (!isGolgi) ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'butt';
 
       if (isBrainbow) {
         drawBrainbow(ctx, n);
@@ -528,7 +542,7 @@
       ctx.globalAlpha = 1.0;
 
       // Soma nodes
-      ctx.globalCompositeOperation = isGolgi ? 'source-over' : 'screen';
+      ctx.globalCompositeOperation = isGolgi ? 'source-over' : 'lighter';
       for (let si = 0; si < somaList.length; si++) {
         const soma = somaList[si];
         const idxs = neuronSegIdx[si];
