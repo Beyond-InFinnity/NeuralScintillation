@@ -400,29 +400,29 @@
       somaList = [];
       const rng = mulberry32(currentSeed);
 
-      // Seed p5's noise for Perlin sampling
       noiseSeed(currentSeed);
-
-      // Use a bounded noise z so it doesn't float into degenerate Perlin regions
       const noiseZ = (currentSeed % 1000) * 0.1;
 
       const minDist = Math.min(cw, ch) / (Math.sqrt(params.neuronCount) * 1.1);
       const somas = poissonDiskSample(cw, ch, minDist, params.neuronCount, rng);
 
-      // Base length for primary axons — scales with canvas size
-      // Each primary axon is 50-90px equivalent at 1080p
-      const baseLen = Math.min(cw, ch) * 0.08;
+      // Primary axon length: 80-150px at 1080p — long radial reach before branching
+      const primaryLen = Math.min(cw, ch) * 0.1 + 30;
+      const maxDepth = params.branchDepth;
 
-      console.log(`[Gen] seed=${currentSeed}, soma=${somas.length}, depth=${params.branchDepth}, baseLen=${baseLen.toFixed(1)}, canvas=${cw}x${ch}`);
+      console.log(`[Gen] seed=${currentSeed}, soma=${somas.length}, depth=${maxDepth}, primaryLen=${primaryLen.toFixed(1)}, canvas=${cw}x${ch}`);
 
       for (let si = 0; si < somas.length; si++) {
         const soma = somas[si];
         const segStart = segments.length;
-        // 3-6 primary axons per soma
         const numPrimary = 3 + Math.floor(rng() * 4);
         for (let i = 0; i < numPrimary; i++) {
-          const angle = (i / numPrimary) * Math.PI * 2 + (rng() - 0.5) * 0.6;
-          growBranch(soma.x, soma.y, angle, baseLen, params.branchDepth, 2.5, rng, noiseZ, si);
+          const angle = (i / numPrimary) * Math.PI * 2 + (rng() - 0.5) * 0.5;
+          growBranch(
+            soma.x, soma.y, angle, primaryLen,
+            maxDepth, maxDepth, 2.5,
+            rng, noiseZ, si, soma.x, soma.y
+          );
         }
         somaList.push({ x: soma.x, y: soma.y, segStart, segEnd: segments.length });
       }
@@ -443,28 +443,45 @@
       document.getElementById('seg-count').textContent = n.toLocaleString() + ' segments';
     }
 
-    function growBranch(x, y, angle, length, depth, thickness, rng, noiseZ, somaIdx) {
-      if (depth <= 0 || thickness < 0.1 || length < 1) return;
+    function growBranch(x, y, angle, length, depth, maxDepth, thickness, rng, noiseZ, somaIdx, somaX, somaY) {
+      if (depth <= 0 || thickness < 0.08 || length < 1) return;
 
-      // Sub-segments per branch — line density controls fineness
+      const isTerminal = depth <= 1;
+      const depthRatio = 1 - depth / maxDepth; // 0 at root, ~1 at tips
+
+      // Sub-segments per branch
       const numSubs = Math.max(3, Math.round(length * params.lineDensity / 5));
       const stepLen = length / numSubs;
 
       let cx = x, cy = y;
       let cAngle = angle;
 
-      // Noise z varies per soma so each tree has unique curvature
       const nz = noiseZ + somaIdx * 7.7;
 
+      // Noise amplitude decreases with depth: deep branches are nearly straight
+      const noiseAmp = 0.5 * (1.0 - depthRatio * 0.7);
+
       for (let i = 0; i < numSubs; i++) {
-        // Perlin noise perturbation — gentle organic curvature
+        // Perlin noise perturbation — scaled by depth
         const noiseVal = noise(cx * 0.004, cy * 0.004, nz);
-        cAngle += (noiseVal - 0.5) * 0.6;
+        const noiseAngle = cAngle + (noiseVal - 0.5) * noiseAmp;
+
+        // Forward bias: parent heading dominates (75%), noise is secondary (25%)
+        cAngle = cAngle * 0.75 + noiseAngle * 0.25;
+
+        // Outward bias from soma: prevents branches looping back
+        const toSomaX = cx - somaX;
+        const toSomaY = cy - somaY;
+        const distFromSoma = Math.sqrt(toSomaX * toSomaX + toSomaY * toSomaY);
+        if (distFromSoma > 5) {
+          const outwardAngle = Math.atan2(toSomaY, toSomaX);
+          // Blend 85% forward + 15% outward
+          cAngle = cAngle * 0.85 + outwardAngle * 0.15;
+        }
 
         const nx = cx + Math.cos(cAngle) * stepLen;
         const ny = cy + Math.sin(cAngle) * stepLen;
 
-        // Pre-compute unit normal (perpendicular to segment direction)
         const dx = nx - cx;
         const dy = ny - cy;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -474,24 +491,51 @@
           x2: nx, y2: ny,
           nx: -dy / len,
           ny: dx / len,
-          thick: thickness * (1 - (i / numSubs) * 0.25)
+          thick: isTerminal
+            ? Math.max(0.3, thickness * (1 - (i / numSubs) * 0.4))
+            : thickness * (1 - (i / numSubs) * 0.2)
         });
 
         cx = nx;
         cy = ny;
       }
 
-      // --- Recursive branching: always 2-3 children at each depth > 1 ---
+      // --- Branching ---
       if (depth > 1) {
-        const spreadRad = params.branchSpread * Math.PI / 180;
-        const numChildren = 2 + (rng() < 0.5 ? 1 : 0);
-        const childLen = length * (0.68 + rng() * 0.14);
-        const childThick = thickness * (0.60 + rng() * 0.12);
+        const nextIsTerminal = depth === 2;
 
-        for (let c = 0; c < numChildren; c++) {
-          const t = numChildren === 1 ? 0 : (c / (numChildren - 1)) * 2 - 1;
-          const childAngle = cAngle + t * spreadRad + (rng() - 0.5) * spreadRad * 0.25;
-          growBranch(cx, cy, childAngle, childLen, depth - 1, childThick, rng, noiseZ, somaIdx);
+        if (nextIsTerminal) {
+          // Terminal branching: many short, thin, tightly-spread dendritic tips
+          const numChildren = 3 + Math.floor(rng() * 3); // 3-5
+          const termSpread = 10 * Math.PI / 180; // ±10°
+          const termLen = 10 + rng() * 10; // 10-20px
+          const termThick = 0.3 + rng() * 0.2; // 0.3-0.5
+
+          for (let c = 0; c < numChildren; c++) {
+            const t = numChildren === 1 ? 0 : (c / (numChildren - 1)) * 2 - 1;
+            const childAngle = cAngle + t * termSpread + (rng() - 0.5) * termSpread * 0.3;
+            growBranch(
+              cx, cy, childAngle, termLen,
+              depth - 1, maxDepth, termThick,
+              rng, noiseZ, somaIdx, somaX, somaY
+            );
+          }
+        } else {
+          // Standard branching: 2-3 children
+          const spreadRad = params.branchSpread * Math.PI / 180;
+          const numChildren = 2 + (rng() < 0.5 ? 1 : 0);
+          const childLen = length * (0.68 + rng() * 0.14);
+          const childThick = thickness * (0.60 + rng() * 0.12);
+
+          for (let c = 0; c < numChildren; c++) {
+            const t = numChildren === 1 ? 0 : (c / (numChildren - 1)) * 2 - 1;
+            const childAngle = cAngle + t * spreadRad + (rng() - 0.5) * spreadRad * 0.2;
+            growBranch(
+              cx, cy, childAngle, childLen,
+              depth - 1, maxDepth, childThick,
+              rng, noiseZ, somaIdx, somaX, somaY
+            );
+          }
         }
       }
     }
