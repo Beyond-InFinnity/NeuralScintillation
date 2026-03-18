@@ -371,12 +371,38 @@ function fullInit(){
   uploadStatic();
   document.getElementById('seed').value=seed;
   requestAnimationFrame(frame);
+  // Signal to parent iframe that we're ready for postMessage
+  if(window.parent!==window)window.parent.postMessage({type:'scintillation-ready'},'*');
 }
 
 function regen(){
   const w=gl.canvas.width,h=gl.canvas.height;
   generate(w,h);uploadStatic();
 }
+
+// postMessage API for iframe embedding
+window.addEventListener('message',function(e){
+  if(!e.data||!e.data.type)return;
+  if(e.data.type==='setState'&&e.data.payload){
+    const s=e.data.payload;
+    if(typeof s.seed==='number')seed=s.seed;
+    if(typeof s.colorMode==='number')colorMode=s.colorMode;
+    if(typeof s.neuronCount==='number')P.neuronCount=s.neuronCount;
+    if(typeof s.branchDepth==='number')P.branchDepth=s.branchDepth;
+    if(typeof s.branchSpread==='number')P.branchSpread=s.branchSpread;
+    if(typeof s.lineDensity==='number')P.lineDensity=s.lineDensity;
+    if(typeof s.lightSpeed==='number')P.lightSpeed=s.lightSpeed;
+    if(typeof s.glowWidth==='number')P.glowWidth=s.glowWidth;
+    if(typeof s.decayRate==='number')P.decayRate=s.decayRate;
+    if(typeof s.bloomIntensity==='number')P.bloomIntensity=s.bloomIntensity;
+    _gs=-1; // invalidate Gaussian LUT cache
+    regen();
+  }
+  if(e.data.type==='getState'){
+    const state={seed,colorMode,neuronCount:P.neuronCount,branchDepth:P.branchDepth,branchSpread:P.branchSpread,lineDensity:P.lineDensity,lightSpeed:P.lightSpeed,glowWidth:P.glowWidth,decayRate:P.decayRate,bloomIntensity:P.bloomIntensity};
+    e.source&&e.source.postMessage({type:'scintillation-state',payload:state},'*');
+  }
+});
 
 window.addEventListener('resize',()=>{
   const w=innerWidth,h=innerHeight;
