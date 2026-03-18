@@ -9,559 +9,404 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://scintillation.nerv-analytic.ai">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Neural Scintillation — Auric Dendriticism">
-  <meta name="twitter:description" content="Anisotropic light simulation on procedural neural geometry. Generative art by Connor.">
   <meta name="description" content="Anisotropic light simulation on procedural neural geometry. Generative art by Connor Finnerty.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0a'/><circle cx='16' cy='16' r='4' fill='%23c9a84c'/><line x1='16' y1='4' x2='16' y2='10' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='16' y1='22' x2='16' y2='28' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='4' y1='16' x2='10' y2='16' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='22' y1='16' x2='28' y2='16' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/></svg>">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0a'/><circle cx='16' cy='16' r='4' fill='%23c9a84c'/></svg>">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { overflow: hidden; background: #0a0a0a; font-family: 'Courier New', monospace; height: 100%; }
-    #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-    #canvas-container canvas { display: block; position: absolute; top: 0; left: 0; }
-    #sidebar {
-      position: fixed; top: 0; right: 0; width: 280px; height: 100%;
-      background: rgba(10, 10, 10, 0.92); border-left: 1px solid rgba(201, 168, 76, 0.15);
-      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      z-index: 10; overflow-y: auto; padding: 24px 20px; color: #ccc; transition: transform 0.3s ease;
-    }
-    #sidebar.hidden { transform: translateX(100%); }
-    #sidebar-toggle {
-      position: fixed; top: 16px; right: 16px; z-index: 20;
-      background: rgba(10, 10, 10, 0.8); border: 1px solid rgba(201, 168, 76, 0.3);
-      color: #c9a84c; width: 36px; height: 36px; border-radius: 6px;
-      cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-    }
-    #sidebar-toggle:hover { background: rgba(201, 168, 76, 0.15); }
-    #sidebar:not(.hidden) ~ #sidebar-toggle { right: 290px; }
-    .sidebar-title { font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #c9a84c; margin-bottom: 4px; }
-    .sidebar-subtitle { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(201, 168, 76, 0.5); margin-bottom: 20px; }
-    .control-group { margin-bottom: 16px; }
-    .control-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: rgba(201, 168, 76, 0.6); margin-bottom: 6px; display: flex; justify-content: space-between; }
-    .control-label span.val { color: #c9a84c; }
-    input[type="range"] { -webkit-appearance: none; width: 100%; height: 3px; background: rgba(201, 168, 76, 0.15); border-radius: 2px; outline: none; }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #c9a84c; cursor: pointer; }
-    input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: #c9a84c; border: none; cursor: pointer; }
-    .seed-row { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
-    .seed-input { flex: 1; background: rgba(201, 168, 76, 0.08); border: 1px solid rgba(201, 168, 76, 0.2); color: #c9a84c; padding: 6px 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; outline: none; }
-    .seed-input:focus { border-color: rgba(201, 168, 76, 0.5); }
-    .btn { background: rgba(201, 168, 76, 0.1); border: 1px solid rgba(201, 168, 76, 0.25); color: #c9a84c; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: all 0.15s; }
-    .btn:hover { background: rgba(201, 168, 76, 0.2); border-color: rgba(201, 168, 76, 0.5); }
-    .btn-row { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
-    .btn-row .btn { flex: 1; text-align: center; min-width: 70px; }
-    .divider { border: none; border-top: 1px solid rgba(201, 168, 76, 0.1); margin: 16px 0; }
-    .color-select { width: 100%; background: rgba(201, 168, 76, 0.08); border: 1px solid rgba(201, 168, 76, 0.2); color: #c9a84c; padding: 8px 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 11px; outline: none; cursor: pointer; }
-    .color-select option { background: #1a1a1a; color: #c9a84c; }
-    .embed-mode #sidebar, .embed-mode #sidebar-toggle { display: none !important; }
-    .seg-count { font-size: 10px; color: rgba(201, 168, 76, 0.3); margin-top: 12px; text-align: center; letter-spacing: 1px; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{overflow:hidden;background:#0a0a0a;font-family:'Courier New',monospace;height:100%}
+    #cv{position:fixed;top:0;left:0;width:100%;height:100%}
+    #bloom{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;filter:blur(4px);mix-blend-mode:screen;opacity:0.3}
+    #sidebar{position:fixed;top:0;right:0;width:280px;height:100%;background:rgba(10,10,10,0.92);border-left:1px solid rgba(201,168,76,0.15);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:10;overflow-y:auto;padding:24px 20px;color:#ccc;transition:transform .3s ease}
+    #sidebar.hidden{transform:translateX(100%)}
+    #tog{position:fixed;top:16px;right:16px;z-index:20;background:rgba(10,10,10,0.8);border:1px solid rgba(201,168,76,0.3);color:#c9a84c;width:36px;height:36px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+    #tog:hover{background:rgba(201,168,76,0.15)}
+    #sidebar:not(.hidden)~#tog{right:290px}
+    .st{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#c9a84c;margin-bottom:4px}
+    .ss{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,0.5);margin-bottom:20px}
+    .cg{margin-bottom:16px}
+    .cl{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(201,168,76,0.6);margin-bottom:6px;display:flex;justify-content:space-between}
+    .cl .v{color:#c9a84c}
+    input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:rgba(201,168,76,0.15);border-radius:2px;outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#c9a84c;cursor:pointer}
+    .sr{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+    .si{flex:1;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);color:#c9a84c;padding:6px 10px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;outline:none}
+    .b{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);color:#c9a84c;padding:8px 14px;border-radius:4px;cursor:pointer;font-family:'Courier New',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;transition:all .15s}
+    .b:hover{background:rgba(201,168,76,0.2);border-color:rgba(201,168,76,0.5)}
+    .br{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+    .br .b{flex:1;text-align:center;min-width:70px}
+    .dv{border:none;border-top:1px solid rgba(201,168,76,0.1);margin:16px 0}
+    .cs{width:100%;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);color:#c9a84c;padding:8px 10px;border-radius:4px;font-family:'Courier New',monospace;font-size:11px;outline:none;cursor:pointer}
+    .cs option{background:#1a1a1a;color:#c9a84c}
+    .sc{font-size:10px;color:rgba(201,168,76,0.3);margin-top:12px;text-align:center;letter-spacing:1px}
+    .embed-mode #sidebar,.embed-mode #tog{display:none!important}
   </style>
 </head>
 <body>
-  <div id="canvas-container"></div>
-  <button id="sidebar-toggle" title="Toggle controls">&#9776;</button>
+  <canvas id="cv"></canvas>
+  <canvas id="bloom"></canvas>
+  <button id="tog">&#9776;</button>
   <div id="sidebar">
-    <div class="sidebar-title">Neural Scintillation</div>
-    <div class="sidebar-subtitle">Auric Dendriticism</div>
-    <hr class="divider">
-    <div class="control-label" style="margin-bottom: 6px;">Seed</div>
-    <div class="seed-row">
-      <input type="text" id="seed-input" class="seed-input" placeholder="Random seed">
-      <button class="btn" id="seed-prev">&#8592;</button>
-      <button class="btn" id="seed-next">&#8594;</button>
-      <button class="btn" id="seed-random">&#x27F3;</button>
-    </div>
-    <div class="control-group">
-      <div class="control-label">Color Mode</div>
-      <select id="color-mode" class="color-select">
-        <option value="gold" selected>Gold</option>
-        <option value="silver">Silver / Ink</option>
-        <option value="brainbow-classic">Brainbow Classic</option>
-        <option value="brainbow-warm">Brainbow Warm</option>
-        <option value="brainbow-cool">Brainbow Cool</option>
-        <option value="brainbow-spectrum">Brainbow Spectrum</option>
-        <option value="golgi">Golgi Stain</option>
-      </select>
-    </div>
-    <hr class="divider">
-    <div class="control-group"><div class="control-label">Neuron Count <span class="val" id="val-neurons">28</span></div><input type="range" id="ctrl-neurons" min="5" max="50" value="28" step="1"></div>
-    <div class="control-group"><div class="control-label">Branch Depth <span class="val" id="val-depth">4</span></div><input type="range" id="ctrl-depth" min="2" max="6" value="4" step="1"></div>
-    <div class="control-group"><div class="control-label">Branch Spread <span class="val" id="val-spread">22</span>&deg;</div><input type="range" id="ctrl-spread" min="5" max="45" value="22" step="1"></div>
-    <div class="control-group"><div class="control-label">Line Density <span class="val" id="val-density">1.2</span></div><input type="range" id="ctrl-density" min="0.5" max="3.0" value="1.2" step="0.1"></div>
-    <div class="control-group"><div class="control-label">Light Speed <span class="val" id="val-speed">0.8</span>&deg;/f</div><input type="range" id="ctrl-speed" min="0.1" max="3.0" value="0.8" step="0.1"></div>
-    <div class="control-group"><div class="control-label">Glow Width <span class="val" id="val-glow">25</span>&deg;</div><input type="range" id="ctrl-glow" min="5" max="60" value="25" step="1"></div>
-    <div class="control-group"><div class="control-label">Decay Rate <span class="val" id="val-decay">0.88</span></div><input type="range" id="ctrl-decay" min="0.70" max="0.99" value="0.88" step="0.01"></div>
-    <div class="control-group"><div class="control-label">Bloom Intensity <span class="val" id="val-bloom">0.40</span></div><input type="range" id="ctrl-bloom" min="0.0" max="1.0" value="0.40" step="0.05"></div>
-    <hr class="divider">
-    <div class="btn-row"><button class="btn" id="btn-regen">Regenerate</button><button class="btn" id="btn-reset">Reset</button></div>
-    <div class="btn-row"><button class="btn" id="btn-download">Download PNG</button></div>
-    <div class="seg-count" id="seg-count"></div>
+    <div class="st">Neural Scintillation</div><div class="ss">Auric Dendriticism</div>
+    <hr class="dv">
+    <div class="cl" style="margin-bottom:6px">Seed</div>
+    <div class="sr"><input type="text" id="seed" class="si"><button class="b" id="sp">&#8592;</button><button class="b" id="sn">&#8594;</button><button class="b" id="sr2">&#x27F3;</button></div>
+    <div class="cg"><div class="cl">Color Mode</div><select id="cm" class="cs"><option value="0" selected>Gold</option><option value="1">Silver / Ink</option><option value="2">Golgi Stain</option><option value="3">Brainbow Classic</option><option value="4">Brainbow Warm</option><option value="5">Brainbow Cool</option><option value="6">Brainbow Spectrum</option></select></div>
+    <hr class="dv">
+    <div class="cg"><div class="cl">Neuron Count <span class="v" id="vn">28</span></div><input type="range" id="cn" min="5" max="50" value="28" step="1"></div>
+    <div class="cg"><div class="cl">Branch Depth <span class="v" id="vd">4</span></div><input type="range" id="cd" min="2" max="6" value="4" step="1"></div>
+    <div class="cg"><div class="cl">Branch Spread <span class="v" id="vs">22</span>&deg;</div><input type="range" id="css" min="5" max="45" value="22" step="1"></div>
+    <div class="cg"><div class="cl">Line Density <span class="v" id="vl">1.2</span></div><input type="range" id="cl2" min="0.5" max="3.0" value="1.2" step="0.1"></div>
+    <div class="cg"><div class="cl">Light Speed <span class="v" id="vsp">0.8</span>&deg;/f</div><input type="range" id="csp" min="0.1" max="3.0" value="0.8" step="0.1"></div>
+    <div class="cg"><div class="cl">Glow Width <span class="v" id="vg">25</span>&deg;</div><input type="range" id="cg2" min="5" max="60" value="25" step="1"></div>
+    <div class="cg"><div class="cl">Decay Rate <span class="v" id="vdc">0.88</span></div><input type="range" id="cdc" min="0.70" max="0.99" value="0.88" step="0.01"></div>
+    <div class="cg"><div class="cl">Bloom Intensity <span class="v" id="vb">0.40</span></div><input type="range" id="cb" min="0.0" max="1.0" value="0.40" step="0.05"></div>
+    <hr class="dv">
+    <div class="br"><button class="b" id="rg">Regenerate</button><button class="b" id="rs">Reset</button></div>
+    <div class="br"><button class="b" id="dl">Download PNG</button></div>
+    <div class="sc" id="sc"></div>
   </div>
 
-  <script>
-    if (new URLSearchParams(window.location.search).get('embed') === 'true')
-      document.body.classList.add('embed-mode');
+<script>
+"use strict";
+if(new URLSearchParams(location.search).get('embed')==='true')document.body.classList.add('embed-mode');
 
-    // =====================================================================
-    // PARAMS
-    // =====================================================================
-    const DEFAULTS = { neuronCount:28, branchDepth:4, branchSpread:22, lineDensity:1.2, lightSpeed:0.8, glowWidth:25, decayRate:0.88, bloomIntensity:0.40 };
-    let params = { ...DEFAULTS };
-    let colorMode = 'gold';
-    let currentSeed = Math.floor(Math.random() * 999999);
+// ======================== PARAMS ========================
+const D={neuronCount:28,branchDepth:4,branchSpread:22,lineDensity:1.2,lightSpeed:0.8,glowWidth:25,decayRate:0.88,bloomIntensity:0.40};
+let P={...D},colorMode=0,seed=Math.random()*999999|0;
 
-    // =====================================================================
-    // FLAT TYPED ARRAY STORAGE — no objects, no property lookups in hot loop
-    // =====================================================================
-    const MAX_SEG = 150000;
-    const SX1 = new Float32Array(MAX_SEG), SY1 = new Float32Array(MAX_SEG);
-    const SX2 = new Float32Array(MAX_SEG), SY2 = new Float32Array(MAX_SEG);
-    const SNX = new Float32Array(MAX_SEG), SNY = new Float32Array(MAX_SEG);
-    const SW  = new Float32Array(MAX_SEG); // full stroke width
-    const SNI = new Uint8Array(MAX_SEG);   // neuron index
-    const SBR = new Float32Array(MAX_SEG); // brightness (persistent)
-    let segN = 0;
+// ======================== PERLIN NOISE ========================
+let _pp;
+function initNoise(s){const r=mb32(s);_pp=new Uint8Array(512);const p=new Uint8Array(256);for(let i=0;i<256;i++)p[i]=i;for(let i=255;i>0;i--){const j=r()*(i+1)|0,t=p[i];p[i]=p[j];p[j]=t;}for(let i=0;i<512;i++)_pp[i]=p[i&255];}
+function fade(t){return t*t*t*(t*(t*6-15)+10);}
+function grad(h,x,y,z){const b=h&15,u=b<8?x:y,v=b<4?y:b===12||b===14?x:z;return((b&1)?-u:u)+((b&2)?-v:v);}
+function noi(x,y,z){
+  const X=Math.floor(x)&255,Y=Math.floor(y)&255,Z=Math.floor(z)&255;
+  x-=Math.floor(x);y-=Math.floor(y);z-=Math.floor(z);
+  const u=fade(x),v=fade(y),w=fade(z),p=_pp;
+  const A=p[X]+Y,AA=p[A]+Z,AB=p[A+1]+Z,B=p[X+1]+Y,BA=p[B]+Z,BB=p[B+1]+Z;
+  function lr(t,a,b){return a+t*(b-a);}
+  return(lr(w,lr(v,lr(u,grad(p[AA],x,y,z),grad(p[BA],x-1,y,z)),lr(u,grad(p[AB],x,y-1,z),grad(p[BB],x-1,y-1,z))),
+    lr(v,lr(u,grad(p[AA+1],x,y,z-1),grad(p[BA+1],x-1,y,z-1)),lr(u,grad(p[AB+1],x,y-1,z-1),grad(p[BB+1],x-1,y-1,z-1))))+1)*0.5;
+}
 
-    let somaList = [];
-    let neuronSegIdx = []; // per-neuron index arrays for brainbow
-    let lightAngle = 0, _fc = 0;
+// ======================== RNG ========================
+function mb32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
-    // Brightness buckets (no thickness bucketing — quads encode width)
-    const UNI_BUCKETS = 16;
-    const BB_BUCKETS = 8;
-    const _ub = new Array(UNI_BUCKETS);
-    for (let i = 0; i < UNI_BUCKETS; i++) _ub[i] = [];
-    const _nb = new Array(BB_BUCKETS);
-    for (let i = 0; i < BB_BUCKETS; i++) _nb[i] = [];
+// ======================== FLAT TYPED ARRAYS ========================
+const MX=150000;
+const SX1=new Float32Array(MX),SY1=new Float32Array(MX),SX2=new Float32Array(MX),SY2=new Float32Array(MX);
+const SNX=new Float32Array(MX),SNY=new Float32Array(MX),SW=new Float32Array(MX);
+const SNI=new Float32Array(MX); // float for GPU attribute
+const SBR=new Float32Array(MX);
+let segN=0,somaList=[],lightAngle=0;
 
-    // Gaussian LUT
-    const GAUSS = new Float32Array(256);
-    let _gSig = -1;
-    function rebuildGauss() {
-      const s = params.glowWidth / 90;
-      if (s === _gSig) return;
-      _gSig = s;
-      const inv = 1 / (2 * s * s);
-      for (let i = 0; i < 256; i++) { const d = i / 255; GAUSS[i] = Math.exp(-d * d * inv) * (1 - d); }
+// Gaussian LUT
+const GAUSS=new Float32Array(256);let _gs=-1;
+function rebuildG(){const s=P.glowWidth/90;if(s===_gs)return;_gs=s;const inv=1/(2*s*s);for(let i=0;i<256;i++){const d=i/255;GAUSS[i]=Math.exp(-d*d*inv)*(1-d);}}
+
+// ======================== COLORS ========================
+const BB_PAL=[
+  [[220,50,220],[50,200,220],[80,220,80],[220,180,40],[60,80,220],[240,140,40],[180,40,180],[40,220,140],[220,100,100],[100,160,220]],
+  [[220,170,40],[230,120,40],[200,50,50],[220,50,140],[240,130,170],[180,140,40],[200,80,40],[240,180,100]],
+  [[40,180,180],[60,100,220],[60,200,100],[80,220,220],[180,180,220],[100,180,140],[40,140,200],[150,220,180]],
+];
+let neuronColors=[];
+function hsl(h,s,l){h/=360;const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h*12)%12;return l-a*Math.max(Math.min(k-3,9-k,1),-1);};return[f(0)*255|0,f(8)*255|0,f(4)*255|0];}
+function assignColors(n,rng){
+  neuronColors=[];
+  if(colorMode>=3){
+    let pal=colorMode===6?null:BB_PAL[colorMode-3];
+    for(let i=0;i<n;i++){
+      const c=colorMode===6?hsl((i/n)*360+rng()*25,0.8+rng()*0.15,0.5+rng()*0.15):pal[i%pal.length];
+      neuronColors.push({b:c,r:[Math.min(255,c[0]+70),Math.min(255,c[1]+70),Math.min(255,c[2]+70)]});
     }
+  }
+}
 
-    // Bloom — quarter-res for speed
-    let bloomCvs, bloomCtx;
+// ======================== POISSON DISK ========================
+function poisson(w,h,md,cnt,rng){
+  const pts=[],cs=md/1.4142,gw=Math.ceil(w/cs),gh=Math.ceil(h/cs);
+  const g=new Int32Array(gw*gh).fill(-1),act=[],m=md*0.25;
+  let x0=m+rng()*(w-2*m),y0=m+rng()*(h-2*m);
+  pts.push({x:x0,y:y0});act.push(0);g[(x0/cs|0)+(y0/cs|0)*gw]=0;
+  while(act.length>0&&pts.length<cnt*4){
+    const ai=rng()*act.length|0,p=pts[act[ai]];let f=false;
+    for(let a=0;a<30;a++){const an=rng()*6.2832,d=md+rng()*md,nx=p.x+Math.cos(an)*d,ny=p.y+Math.sin(an)*d;
+      if(nx<m||nx>=w-m||ny<m||ny>=h-m)continue;const gx=nx/cs|0,gy=ny/cs|0;let ok=true;
+      o:for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const cx=gx+dx,cy=gy+dy;if(cx<0||cx>=gw||cy<0||cy>=gh)continue;
+        const ci=g[cx+cy*gw];if(ci!==-1){const ddx=nx-pts[ci].x,ddy=ny-pts[ci].y;if(ddx*ddx+ddy*ddy<md*md){ok=false;break o;}}}
+      if(ok){const ni=pts.length;pts.push({x:nx,y:ny});act.push(ni);g[gx+gy*gw]=ni;f=true;break;}}
+    if(!f)act.splice(ai,1);}
+  return pts.slice(0,cnt);
+}
 
-    // =====================================================================
-    // COLOR LUTS — 256 entries, pre-computed CSS strings
-    // =====================================================================
-    const CLU = new Array(256), CLA = new Float32Array(256); // uniform color LUT + alpha
-    let neuronColors = [], neuronLUTs = []; // per-neuron: { base, bright }, and LUT[256]
+// ======================== GEOMETRY ========================
+function addS(x1,y1,x2,y2,w,ni){if(segN>=MX)return;const dx=x2-x1,dy=y2-y1,l=Math.sqrt(dx*dx+dy*dy)||1;SX1[segN]=x1;SY1[segN]=y1;SX2[segN]=x2;SY2[segN]=y2;SNX[segN]=-dy/l;SNY[segN]=dx/l;SW[segN]=w;SNI[segN]=ni;segN++;}
 
-    function buildUniformLUT() {
-      let br, bg, bb, er, eg, eb;
-      if (colorMode === 'gold')   { br=201; bg=168; bb=76;  er=255; eg=243; eb=176; }
-      else if (colorMode === 'silver') { br=110; bg=110; bb=120; er=224; eg=224; eb=235; }
-      else if (colorMode === 'golgi')  { br=58;  bg=42;  bb=26;  er=138; eg=122; eb=90; }
-      else return;
-      for (let i = 0; i < 256; i++) {
-        const t = i / 255;
-        CLU[i] = `rgb(${(br+(er-br)*t)|0},${(bg+(eg-bg)*t)|0},${(bb+(eb-bb)*t)|0})`;
-        CLA[i] = colorMode === 'golgi' ? 0.08 + t * 0.72 : 0.12 + t * 0.88;
-      }
+function generate(cw,ch){
+  segN=0;somaList=[];SBR.fill(0);
+  const rng=mb32(seed);initNoise(seed);const nz=(seed%1000)*0.1;
+  const md=Math.min(cw,ch)/(Math.sqrt(P.neuronCount)*0.85);
+  const somas=poisson(cw,ch,md,P.neuronCount,rng);
+  assignColors(somas.length,mb32(seed+7));
+  const mxD=P.branchDepth,sc=Math.min(cw,ch)/1000;
+  for(let si=0;si<somas.length;si++){
+    if(segN>=MX)break;const s=somas[si],st=segN,aD=rng()*6.2832;
+    growD(s.x,s.y,aD,(100+rng()*80)*sc,3.0,0.3,mxD,0.18,rng,nz,si,s.x,s.y);
+    const nB=4+(rng()*4|0);
+    for(let i=0;i<nB;i++)growD(s.x,s.y,aD+3.1416+(rng()-0.5)*2.83,(35+rng()*45)*sc,2+rng()*0.5,0.2,Math.max(1,mxD-1),0.15,rng,nz,si,s.x,s.y);
+    growD(s.x,s.y,aD+3.1416+(rng()-0.5)*0.5,(180+rng()*220)*sc,1.2,0.3,1,0.03,rng,nz,si,s.x,s.y);
+    somaList.push({x:s.x,y:s.y,st,en:segN});
+  }
+  addSpines(rng);
+  console.log(`[Gen] seed=${seed}, neurons=${somas.length}, segments=${segN}`);
+  document.getElementById('sc').textContent=segN.toLocaleString()+' segments';
+}
+
+function growD(x,y,a,len,sw,ew,dep,sp,rng,nz,ni,sx,sy){
+  if(segN>=MX||dep<0||len<2||sw<0.1)return;
+  const ns=Math.max(3,len*P.lineDensity/5+0.5|0),step=len/ns,nzo=nz+ni*7.7;
+  let cx=x,cy=y,ca=a;
+  for(let i=0;i<ns;i++){
+    if(segN>=MX)break;const t=i/ns,w=sw+(ew-sw)*t;
+    ca+=(noi(cx*0.003,cy*0.003,nzo)-0.5)*0.3;
+    const dx0=cx-sx,dy0=cy-sy,d0=Math.sqrt(dx0*dx0+dy0*dy0);
+    if(d0>15){let df=Math.atan2(dy0,dx0)-ca;if(df>3.1416)df-=6.2832;if(df<-3.1416)df+=6.2832;ca+=df*0.05;}
+    const nx=cx+Math.cos(ca)*step,ny=cy+Math.sin(ca)*step;
+    addS(cx,cy,nx,ny,w,ni);cx=nx;cy=ny;
+    if(dep>0&&i>1&&i<ns-1&&rng()<sp){const si=rng()>0.5?1:-1;growD(cx,cy,ca+si*(0.7+rng()*0.6),(len-i*step)*(0.3+rng()*0.25),w*0.55,Math.max(0.15,ew*0.4),Math.max(0,dep-1),sp*0.4,rng,nz,ni,sx,sy);}
+  }
+  if(dep>0&&segN<MX){const tm=dep<=2,nc=tm?3+(rng()*3|0):2+(rng()<0.45?1:0),spr=(tm?15:P.branchSpread)*0.01745;
+    for(let c=0;c<nc;c++){const cl=tm?8+rng()*14:len*(0.5+rng()*0.22);growD(cx,cy,ca+(rng()-0.5)*2*spr,cl,ew,Math.max(0.15,ew*(tm?0.5:0.35)),dep-1,sp*0.5,rng,nz,ni,sx,sy);}}
+}
+
+function addSpines(rng){const n=segN;for(let i=0;i<n;i++){if(segN>=MX)break;if(SW[i]>0.6||rng()>0.25)continue;const si=rng()>0.5?1:-1,sl=1.5+rng()*3,mx=(SX1[i]+SX2[i])*0.5,my=(SY1[i]+SY2[i])*0.5;addS(mx,my,mx+SNX[i]*si*sl,my+SNY[i]*si*sl,0.15+rng()*0.1,SNI[i]);}}
+
+// ======================== WEBGL ========================
+let gl,ext,prog,vao,staticBuf,brightBuf,quadVBO,idxBuf,neuronTex;
+let uRes,uLightDir,uMode,uBaseCol,uBrightCol,uNeuronTex;
+const bloomEl=document.getElementById('bloom'),bloomCtx2=bloomEl.getContext('2d');
+
+const VS=`#version 300 es
+in vec2 a_corner;
+in vec2 a_p1,a_p2,a_normal;
+in float a_width,a_nIdx,a_br;
+uniform vec2 u_res;
+out float v_br,v_ni;
+void main(){
+  float b=a_br;
+  if(b<0.01){gl_Position=vec4(2,2,0,1);v_br=0.0;v_ni=0.0;return;}
+  float along=a_corner.x,across=a_corner.y*2.0-1.0;
+  float hw=max(a_width*0.5*(0.3+b*0.7),0.35);
+  vec2 pos=mix(a_p1,a_p2,along)+a_normal*across*hw;
+  vec2 c=pos/u_res*2.0-1.0;c.y=-c.y;
+  gl_Position=vec4(c,0,1);v_br=b;v_ni=a_nIdx;
+}`;
+
+const FS=`#version 300 es
+precision mediump float;
+in float v_br,v_ni;
+uniform float u_mode;
+uniform vec3 u_baseCol,u_brightCol;
+uniform sampler2D u_neuronTex;
+out vec4 fc;
+void main(){
+  if(v_br<0.005)discard;
+  vec3 col;float alpha;
+  if(u_mode<2.5){
+    col=mix(u_baseCol,u_brightCol,v_br);
+    alpha=u_mode>1.5?0.08+v_br*0.72:0.12+v_br*0.88;
+  }else{
+    float tc=(v_ni+0.5)/64.0;
+    vec3 base=texture(u_neuronTex,vec2(tc,0.25)).rgb;
+    vec3 bright=texture(u_neuronTex,vec2(tc,0.75)).rgb;
+    col=mix(base,bright,v_br);alpha=0.12+v_br*0.88;
+  }
+  fc=vec4(col,alpha);
+}`;
+
+function compileShader(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;}
+
+function initGL(){
+  const cv=document.getElementById('cv');
+  cv.width=innerWidth;cv.height=innerHeight;
+  gl=cv.getContext('webgl2',{alpha:false,premultipliedAlpha:false,antialias:true,preserveDrawingBuffer:true});
+  if(!gl){document.body.innerHTML='<p style="color:#c9a84c;padding:40px">WebGL 2 required</p>';return false;}
+
+  const vs=compileShader(VS,gl.VERTEX_SHADER),fs=compileShader(FS,gl.FRAGMENT_SHADER);
+  prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(prog));return false;}
+  gl.useProgram(prog);
+
+  // Locations
+  const loc=n=>gl.getAttribLocation(prog,n),uni=n=>gl.getUniformLocation(prog,n);
+  const aCorner=loc('a_corner'),aP1=loc('a_p1'),aP2=loc('a_p2'),aNorm=loc('a_normal'),aW=loc('a_width'),aNI=loc('a_nIdx'),aBr=loc('a_br');
+  uRes=uni('u_res');uMode=uni('u_mode');uBaseCol=uni('u_baseCol');uBrightCol=uni('u_brightCol');uNeuronTex=uni('u_neuronTex');
+
+  // Unit quad: 4 verts, 6 indices
+  quadVBO=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,quadVBO);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,0,1,0,1,1,0,1]),gl.STATIC_DRAW);
+  idxBuf=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array([0,1,2,0,2,3]),gl.STATIC_DRAW);
+
+  // Instance buffers
+  staticBuf=gl.createBuffer();
+  brightBuf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,brightBuf);
+  gl.bufferData(gl.ARRAY_BUFFER,MX*4,gl.DYNAMIC_DRAW);
+
+  // Neuron color texture
+  neuronTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,neuronTex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,64,2,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array(64*2*4));
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+
+  // VAO
+  vao=gl.createVertexArray();gl.bindVertexArray(vao);
+  // Per-vertex
+  gl.bindBuffer(gl.ARRAY_BUFFER,quadVBO);
+  gl.enableVertexAttribArray(aCorner);gl.vertexAttribPointer(aCorner,2,gl.FLOAT,false,0,0);
+  // Per-instance static (stride=32: 2+2+2+1+1 floats = 8 floats = 32 bytes)
+  gl.bindBuffer(gl.ARRAY_BUFFER,staticBuf);
+  gl.enableVertexAttribArray(aP1);gl.vertexAttribPointer(aP1,2,gl.FLOAT,false,32,0);gl.vertexAttribDivisor(aP1,1);
+  gl.enableVertexAttribArray(aP2);gl.vertexAttribPointer(aP2,2,gl.FLOAT,false,32,8);gl.vertexAttribDivisor(aP2,1);
+  gl.enableVertexAttribArray(aNorm);gl.vertexAttribPointer(aNorm,2,gl.FLOAT,false,32,16);gl.vertexAttribDivisor(aNorm,1);
+  gl.enableVertexAttribArray(aW);gl.vertexAttribPointer(aW,1,gl.FLOAT,false,32,24);gl.vertexAttribDivisor(aW,1);
+  gl.enableVertexAttribArray(aNI);gl.vertexAttribPointer(aNI,1,gl.FLOAT,false,32,28);gl.vertexAttribDivisor(aNI,1);
+  // Per-instance dynamic brightness
+  gl.bindBuffer(gl.ARRAY_BUFFER,brightBuf);
+  gl.enableVertexAttribArray(aBr);gl.vertexAttribPointer(aBr,1,gl.FLOAT,false,0,0);gl.vertexAttribDivisor(aBr,1);
+  // Index buffer
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf);
+  gl.bindVertexArray(null);
+  return true;
+}
+
+function uploadStatic(){
+  const d=new Float32Array(segN*8);
+  for(let i=0;i<segN;i++){const o=i*8;d[o]=SX1[i];d[o+1]=SY1[i];d[o+2]=SX2[i];d[o+3]=SY2[i];d[o+4]=SNX[i];d[o+5]=SNY[i];d[o+6]=SW[i];d[o+7]=SNI[i];}
+  gl.bindBuffer(gl.ARRAY_BUFFER,staticBuf);gl.bufferData(gl.ARRAY_BUFFER,d,gl.STATIC_DRAW);
+}
+
+function uploadNeuronTex(){
+  const d=new Uint8Array(64*2*4);
+  for(let i=0;i<neuronColors.length&&i<64;i++){
+    const nc=neuronColors[i],o=i*4,o2=256+i*4;
+    d[o]=nc.b[0];d[o+1]=nc.b[1];d[o+2]=nc.b[2];d[o+3]=255;
+    d[o2]=nc.r[0];d[o2+1]=nc.r[1];d[o2+2]=nc.r[2];d[o2+3]=255;
+  }
+  gl.bindTexture(gl.TEXTURE_2D,neuronTex);
+  gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,64,2,gl.RGBA,gl.UNSIGNED_BYTE,d);
+}
+
+function setColorUniforms(){
+  const bases=[[0.788,0.659,0.298],[0.431,0.431,0.471],[0.227,0.165,0.102]];
+  const brights=[[1,0.953,0.690],[0.878,0.878,0.922],[0.541,0.478,0.353]];
+  const m=Math.min(colorMode,2);
+  gl.uniform3fv(uBaseCol,bases[m]);gl.uniform3fv(uBrightCol,brights[m]);
+  gl.uniform1f(uMode,colorMode);
+  if(colorMode>=3)uploadNeuronTex();
+}
+
+// ======================== RENDER LOOP ========================
+let fc=0,lastT=0,fpsC=0;
+
+function frame(t){
+  requestAnimationFrame(frame);
+  fc++;fpsC++;
+  if(t-lastT>1000){console.log(`[Perf] fps=${(fpsC*1000/(t-lastT)).toFixed(1)}, segs=${segN}`);fpsC=0;lastT=t;}
+  if(!gl||segN===0)return;
+
+  // Brightness on CPU
+  rebuildG();
+  lightAngle+=P.lightSpeed*0.01745;if(lightAngle>6.2832)lightAngle-=6.2832;
+  const lx=Math.cos(lightAngle),ly=Math.sin(lightAngle),decay=P.decayRate;
+  for(let i=0;i<segN;i++){
+    const dot=SNX[i]*lx+SNY[i]*ly,ad=dot<0?-dot:dot;
+    const di=((1-ad)*255+0.5)|0;
+    const inst=GAUSS[di>255?255:di<0?0:di];
+    const prev=SBR[i]*decay;
+    SBR[i]=inst>prev?inst:prev;
+  }
+
+  // Upload brightness
+  gl.bindBuffer(gl.ARRAY_BUFFER,brightBuf);
+  gl.bufferSubData(gl.ARRAY_BUFFER,0,SBR.subarray(0,segN));
+
+  // Render
+  const isGolgi=colorMode===2;
+  gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+  if(isGolgi)gl.clearColor(0.831,0.769,0.627,1);else gl.clearColor(0.039,0.039,0.039,1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);
+  if(isGolgi)gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  else gl.blendFunc(gl.SRC_ALPHA,gl.ONE); // additive
+
+  gl.useProgram(prog);
+  gl.uniform2f(uRes,gl.canvas.width,gl.canvas.height);
+  setColorUniforms();
+  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,neuronTex);gl.uniform1i(uNeuronTex,0);
+
+  gl.bindVertexArray(vao);
+  gl.drawElementsInstanced(gl.TRIANGLES,6,gl.UNSIGNED_SHORT,0,segN);
+  gl.bindVertexArray(null);
+
+  // Bloom overlay (CSS-blurred canvas2d copy)
+  if(!isGolgi&&P.bloomIntensity>0.01){
+    bloomEl.style.opacity=P.bloomIntensity;
+    if(fc%4===0){
+      bloomCtx2.clearRect(0,0,bloomEl.width,bloomEl.height);
+      bloomCtx2.drawImage(gl.canvas,0,0,bloomEl.width,bloomEl.height);
     }
+  }else{bloomEl.style.opacity=0;}
+}
 
-    const BB_CLASSIC = [[220,50,220],[50,200,220],[80,220,80],[220,180,40],[60,80,220],[240,140,40],[180,40,180],[40,220,140],[220,100,100],[100,160,220]];
-    const BB_WARM = [[220,170,40],[230,120,40],[200,50,50],[220,50,140],[240,130,170],[180,140,40],[200,80,40],[240,180,100]];
-    const BB_COOL = [[40,180,180],[60,100,220],[60,200,100],[80,220,220],[180,180,220],[100,180,140],[40,140,200],[150,220,180]];
+// ======================== INIT ========================
+function fullInit(){
+  const w=innerWidth,h=innerHeight;
+  if(!initGL())return;
+  bloomEl.width=w/4|0;bloomEl.height=h/4|0;
+  generate(w,h);
+  uploadStatic();
+  document.getElementById('seed').value=seed;
+  requestAnimationFrame(frame);
+}
 
-    function hslToRgb(h, s, l) {
-      h /= 360; const a = s * Math.min(l, 1 - l);
-      const f = n => { const k = (n + h * 12) % 12; return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1); };
-      return [(f(0)*255)|0, (f(8)*255)|0, (f(4)*255)|0];
-    }
+function regen(){
+  const w=gl.canvas.width,h=gl.canvas.height;
+  generate(w,h);uploadStatic();
+}
 
-    function assignNeuronColors(count, rng) {
-      neuronColors = []; neuronLUTs = [];
-      let pal;
-      if (colorMode === 'brainbow-classic') pal = BB_CLASSIC;
-      else if (colorMode === 'brainbow-warm') pal = BB_WARM;
-      else if (colorMode === 'brainbow-cool') pal = BB_COOL;
-      else if (colorMode === 'brainbow-spectrum') {
-        pal = [];
-        for (let i = 0; i < count; i++) pal.push(hslToRgb((i/count)*360+rng()*25, 0.8+rng()*0.15, 0.5+rng()*0.15));
-      } else return;
-      for (let i = 0; i < count; i++) {
-        const c = pal[i % pal.length];
-        const bright = [Math.min(255,c[0]+70), Math.min(255,c[1]+70), Math.min(255,c[2]+70)];
-        neuronColors.push({ base: c, bright });
-        const lut = new Array(256);
-        for (let b = 0; b < 256; b++) {
-          const t = b / 255;
-          lut[b] = `rgb(${(c[0]+(bright[0]-c[0])*t)|0},${(c[1]+(bright[1]-c[1])*t)|0},${(c[2]+(bright[2]-c[2])*t)|0})`;
-        }
-        neuronLUTs.push(lut);
-      }
-    }
+window.addEventListener('resize',()=>{
+  const w=innerWidth,h=innerHeight;
+  gl.canvas.width=w;gl.canvas.height=h;
+  bloomEl.width=w/4|0;bloomEl.height=h/4|0;
+  regen();
+});
 
-    // =====================================================================
-    // RNG
-    // =====================================================================
-    function mulberry32(a) {
-      return function() { a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a);
-        t=t+Math.imul(t^t>>>7,61|t)^t; return((t^t>>>14)>>>0)/4294967296; };
-    }
-
-    // =====================================================================
-    // POISSON DISK
-    // =====================================================================
-    function poissonDisk(w, h, minD, count, rng) {
-      const pts=[], cs=minD/Math.SQRT2, gw=Math.ceil(w/cs), gh=Math.ceil(h/cs);
-      const grid=new Int32Array(gw*gh).fill(-1), act=[], m=minD*0.25;
-      const x0=m+rng()*(w-2*m), y0=m+rng()*(h-2*m);
-      pts.push({x:x0,y:y0}); act.push(0); grid[(x0/cs|0)+(y0/cs|0)*gw]=0;
-      while(act.length>0&&pts.length<count*4){
-        const ai=rng()*act.length|0, p=pts[act[ai]]; let found=false;
-        for(let a=0;a<30;a++){
-          const ang=rng()*6.2832, d=minD+rng()*minD;
-          const nx=p.x+Math.cos(ang)*d, ny=p.y+Math.sin(ang)*d;
-          if(nx<m||nx>=w-m||ny<m||ny>=h-m) continue;
-          const gx=nx/cs|0, gy=ny/cs|0; let ok=true;
-          o: for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){
-            const cx=gx+dx,cy=gy+dy;
-            if(cx<0||cx>=gw||cy<0||cy>=gh) continue;
-            const ci=grid[cx+cy*gw];
-            if(ci!==-1){const ddx=nx-pts[ci].x,ddy=ny-pts[ci].y;
-              if(ddx*ddx+ddy*ddy<minD*minD){ok=false;break o;}}
-          }
-          if(ok){const ni=pts.length;pts.push({x:nx,y:ny});act.push(ni);grid[gx+gy*gw]=ni;found=true;break;}
-        }
-        if(!found) act.splice(ai,1);
-      }
-      return pts.slice(0,count);
-    }
-
-    // =====================================================================
-    // GEOMETRY GENERATION — writes directly to flat typed arrays
-    // =====================================================================
-    function addSeg(x1,y1,x2,y2,w,ni) {
-      if (segN >= MAX_SEG) return;
-      const dx=x2-x1, dy=y2-y1, len=Math.sqrt(dx*dx+dy*dy)||1;
-      SX1[segN]=x1; SY1[segN]=y1; SX2[segN]=x2; SY2[segN]=y2;
-      SNX[segN]=-dy/len; SNY[segN]=dx/len;
-      SW[segN]=w; SNI[segN]=ni; segN++;
-    }
-
-    function generateNetwork(cw, ch) {
-      segN = 0; somaList = [];
-      SBR.fill(0);
-      const rng = mulberry32(currentSeed);
-      noiseSeed(currentSeed);
-      const nz = (currentSeed % 1000) * 0.1;
-
-      const minDist = Math.min(cw,ch) / (Math.sqrt(params.neuronCount) * 0.85);
-      const somas = poissonDisk(cw, ch, minDist, params.neuronCount, rng);
-
-      buildUniformLUT();
-      assignNeuronColors(somas.length, mulberry32(currentSeed + 7));
-
-      const maxD = params.branchDepth;
-      const sc = Math.min(cw,ch) / 1000;
-
-      for (let si = 0; si < somas.length; si++) {
-        if (segN >= MAX_SEG) break;
-        const s = somas[si], start = segN;
-        const aDir = rng() * 6.2832;
-
-        // Apical dendrite
-        growD(s.x, s.y, aDir, (100+rng()*80)*sc, 3.0, 0.3, maxD, 0.18, rng, nz, si, s.x, s.y);
-        // Basal dendrites
-        const nB = 4 + (rng()*4|0);
-        for (let i=0; i<nB; i++) {
-          const a = aDir + 3.1416 + (rng()-0.5)*2.83;
-          growD(s.x, s.y, a, (35+rng()*45)*sc, 2.0+rng()*0.5, 0.2, Math.max(1,maxD-1), 0.15, rng, nz, si, s.x, s.y);
-        }
-        // Axon
-        growD(s.x, s.y, aDir+3.1416+(rng()-0.5)*0.5, (180+rng()*220)*sc, 1.2, 0.3, 1, 0.03, rng, nz, si, s.x, s.y);
-
-        somaList.push({x:s.x, y:s.y, start, end:segN});
-      }
-
-      // Spines
-      addSpines(rng);
-
-      // Build per-neuron index arrays
-      neuronSegIdx = new Array(somaList.length);
-      for (let i=0; i<somaList.length; i++) neuronSegIdx[i]=[];
-      for (let i=0; i<segN; i++) neuronSegIdx[SNI[i]].push(i);
-
-      console.log(`[Gen] seed=${currentSeed}, neurons=${somas.length}, segments=${segN}`);
-      document.getElementById('seg-count').textContent = segN.toLocaleString() + ' segments';
-    }
-
-    function growD(x, y, angle, length, startW, endW, depth, splitP, rng, nz, ni, sx, sy) {
-      if (segN >= MAX_SEG || depth < 0 || length < 2 || startW < 0.1) return;
-      const numS = Math.max(3, length * params.lineDensity / 5 + 0.5 | 0);
-      const step = length / numS;
-      const nzO = nz + ni * 7.7;
-      let cx = x, cy = y, ca = angle;
-
-      for (let i = 0; i < numS; i++) {
-        if (segN >= MAX_SEG) break;
-        const t = i / numS;
-        const w = startW + (endW - startW) * t;
-
-        // Perlin flow field steering
-        ca += (noise(cx * 0.003, cy * 0.003, nzO) - 0.5) * 0.3;
-
-        // Outward nudge (5%)
-        const dx0 = cx - sx, dy0 = cy - sy;
-        const d0 = Math.sqrt(dx0*dx0 + dy0*dy0);
-        if (d0 > 15) {
-          let diff = Math.atan2(dy0, dx0) - ca;
-          if (diff > 3.1416) diff -= 6.2832;
-          if (diff < -3.1416) diff += 6.2832;
-          ca += diff * 0.05;
-        }
-
-        const nx = cx + Math.cos(ca) * step, ny = cy + Math.sin(ca) * step;
-        addSeg(cx, cy, nx, ny, w, ni);
-        cx = nx; cy = ny;
-
-        // Mid-branch split
-        if (depth > 0 && i > 1 && i < numS - 1 && rng() < splitP) {
-          const side = rng() > 0.5 ? 1 : -1;
-          const sa = ca + side * (0.7 + rng() * 0.6);
-          const sl = (length - i * step) * (0.3 + rng() * 0.25);
-          growD(cx, cy, sa, sl, w * 0.55, Math.max(0.15, endW * 0.4),
-            Math.max(0, depth-1), splitP * 0.4, rng, nz, ni, sx, sy);
-        }
-      }
-
-      if (depth > 0 && segN < MAX_SEG) {
-        const term = depth <= 2;
-        const nCh = term ? (3 + (rng()*3|0)) : (2 + (rng() < 0.45 ? 1 : 0));
-        const sp = (term ? 15 : params.branchSpread) * 0.01745;
-        for (let c = 0; c < nCh; c++) {
-          const off = (rng() - 0.5) * 2 * sp;
-          const cl = term ? (8 + rng() * 14) : (length * (0.5 + rng() * 0.22));
-          growD(cx, cy, ca + off, cl, endW, Math.max(0.15, endW * (term ? 0.5 : 0.35)),
-            depth - 1, splitP * 0.5, rng, nz, ni, sx, sy);
-        }
-      }
-    }
-
-    function addSpines(rng) {
-      const n = segN;
-      for (let i = 0; i < n; i++) {
-        if (segN >= MAX_SEG) break;
-        if (SW[i] > 0.6 || rng() > 0.25) continue;
-        const side = rng() > 0.5 ? 1 : -1;
-        const sl = 1.5 + rng() * 3;
-        const mx = (SX1[i]+SX2[i])*0.5, my = (SY1[i]+SY2[i])*0.5;
-        addSeg(mx, my, mx + SNX[i]*side*sl, my + SNY[i]*side*sl, 0.15+rng()*0.1, SNI[i]);
-      }
-    }
-
-    // =====================================================================
-    // p5 SETUP
-    // =====================================================================
-    function setup() {
-      const c = document.getElementById('canvas-container');
-      createCanvas(windowWidth, windowHeight).parent(c);
-      pixelDensity(1);
-      bloomCvs = document.createElement('canvas');
-      bloomCvs.width = windowWidth / 4 | 0;
-      bloomCvs.height = windowHeight / 4 | 0;
-      bloomCtx = bloomCvs.getContext('2d');
-      document.getElementById('seed-input').value = currentSeed;
-      generateNetwork(windowWidth, windowHeight);
-    }
-
-    // =====================================================================
-    // DRAW — filled quads, ~16 fill() calls instead of ~200 stroke() calls
-    // =====================================================================
-    function draw() {
-      const ctx = drawingContext, n = segN;
-      if (n === 0) return;
-      _fc++;
-      if (_fc % 60 === 0) console.log(`[Perf] fps=${frameRate().toFixed(1)}, segs=${n}`);
-
-      // Advance light
-      lightAngle += params.lightSpeed * 0.01745;
-      if (lightAngle > 6.2832) lightAngle -= 6.2832;
-      const lx = Math.cos(lightAngle), ly = Math.sin(lightAngle);
-
-      // Brightness — Gaussian LUT, typed arrays, zero allocations
-      rebuildGauss();
-      const decay = params.decayRate;
-      for (let i = 0; i < n; i++) {
-        const dot = SNX[i] * lx + SNY[i] * ly;
-        const ad = dot < 0 ? -dot : dot;
-        const di = ((1 - ad) * 255 + 0.5) | 0;
-        const inst = GAUSS[di > 255 ? 255 : di < 0 ? 0 : di];
-        const prev = SBR[i] * decay;
-        SBR[i] = inst > prev ? inst : prev;
-      }
-
-      const isGolgi = colorMode === 'golgi';
-      const isBB = colorMode.startsWith('brainbow');
-
-      // Clear
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = isGolgi ? '#d4c4a0' : '#0a0a0a';
-      ctx.fillRect(0, 0, width, height);
-
-      if (!isGolgi) ctx.globalCompositeOperation = 'lighter';
-
-      if (isBB) drawBB(ctx, n);
-      else drawUni(ctx, n);
-
-      ctx.globalAlpha = 1.0;
-
-      // Soma
-      ctx.globalCompositeOperation = isGolgi ? 'source-over' : 'lighter';
-      for (let si = 0; si < somaList.length; si++) {
-        const sm = somaList[si];
-        let mxB = 0;
-        const idxs = neuronSegIdx[si];
-        for (let j = 0; j < Math.min(idxs.length, 40); j++)
-          if (SBR[idxs[j]] > mxB) mxB = SBR[idxs[j]];
-        if (mxB < 0.03) continue;
-        if (isBB && neuronLUTs[si]) ctx.fillStyle = neuronLUTs[si][(mxB*255)|0];
-        else ctx.fillStyle = CLU[(mxB*255)|0];
-        ctx.globalAlpha = mxB * 0.9;
-        ctx.beginPath(); ctx.arc(sm.x, sm.y, 3+mxB*4, 0, 6.2832); ctx.fill();
-      }
-      ctx.globalAlpha = 1.0;
-
-      // Bloom — quarter-res, every 4 frames
-      if (!isGolgi && params.bloomIntensity > 0.01) {
-        if (_fc % 4 === 0) {
-          bloomCtx.clearRect(0, 0, bloomCvs.width, bloomCvs.height);
-          bloomCtx.filter = 'blur(3px)';
-          bloomCtx.drawImage(ctx.canvas, 0, 0, bloomCvs.width, bloomCvs.height);
-          bloomCtx.filter = 'none';
-        }
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = params.bloomIntensity * 0.35;
-        ctx.drawImage(bloomCvs, 0, 0, width, height);
-        ctx.globalAlpha = 1.0;
-      }
-      ctx.globalCompositeOperation = 'source-over';
-    }
-
-    // --- Uniform mode: 16 fill() calls with quads ---
-    function drawUni(ctx, n) {
-      for (let i = 0; i < UNI_BUCKETS; i++) _ub[i].length = 0;
-      for (let i = 0; i < n; i++) {
-        const b = SBR[i];
-        if (b < 0.015) continue;
-        _ub[Math.min((b * UNI_BUCKETS) | 0, UNI_BUCKETS - 1)].push(i);
-      }
-      for (let bk = 0; bk < UNI_BUCKETS; bk++) {
-        const ids = _ub[bk];
-        if (ids.length === 0) continue;
-        const bv = (bk + 0.5) / UNI_BUCKETS;
-        const li = (bv * 255) | 0;
-        ctx.fillStyle = CLU[li];
-        ctx.globalAlpha = CLA[li];
-        ctx.beginPath();
-        const ws = 0.3 + bv * 0.7;
-        for (let j = 0; j < ids.length; j++) {
-          const i = ids[j];
-          let hw = SW[i] * 0.5 * ws;
-          if (hw < 0.35) hw = 0.35;
-          const nnx = SNX[i] * hw, nny = SNY[i] * hw;
-          ctx.moveTo(SX1[i]+nnx, SY1[i]+nny);
-          ctx.lineTo(SX2[i]+nnx, SY2[i]+nny);
-          ctx.lineTo(SX2[i]-nnx, SY2[i]-nny);
-          ctx.lineTo(SX1[i]-nnx, SY1[i]-nny);
-        }
-        ctx.fill();
-      }
-    }
-
-    // --- Brainbow: per-neuron × 8 brightness = ~224 fill() calls ---
-    function drawBB(ctx, n) {
-      for (let ni = 0; ni < somaList.length; ni++) {
-        const idxs = neuronSegIdx[ni];
-        if (idxs.length === 0) continue;
-        const lut = neuronLUTs[ni];
-        if (!lut) continue;
-
-        for (let i = 0; i < BB_BUCKETS; i++) _nb[i].length = 0;
-        for (let j = 0; j < idxs.length; j++) {
-          const idx = idxs[j], b = SBR[idx];
-          if (b < 0.015) continue;
-          _nb[Math.min((b * BB_BUCKETS) | 0, BB_BUCKETS - 1)].push(idx);
-        }
-
-        for (let bk = 0; bk < BB_BUCKETS; bk++) {
-          const ids = _nb[bk];
-          if (ids.length === 0) continue;
-          const bv = (bk + 0.5) / BB_BUCKETS;
-          ctx.fillStyle = lut[(bv * 255) | 0];
-          ctx.globalAlpha = 0.12 + bv * 0.88;
-          ctx.beginPath();
-          const ws = 0.3 + bv * 0.7;
-          for (let j = 0; j < ids.length; j++) {
-            const i = ids[j];
-            let hw = SW[i] * 0.5 * ws;
-            if (hw < 0.35) hw = 0.35;
-            const nnx = SNX[i] * hw, nny = SNY[i] * hw;
-            ctx.moveTo(SX1[i]+nnx, SY1[i]+nny);
-            ctx.lineTo(SX2[i]+nnx, SY2[i]+nny);
-            ctx.lineTo(SX2[i]-nnx, SY2[i]-nny);
-            ctx.lineTo(SX1[i]-nnx, SY1[i]-nny);
-          }
-          ctx.fill();
-        }
-      }
-    }
-
-    // =====================================================================
-    // RESIZE
-    // =====================================================================
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
-      bloomCvs.width = windowWidth/4|0; bloomCvs.height = windowHeight/4|0;
-      generateNetwork(windowWidth, windowHeight);
-    }
-
-    // =====================================================================
-    // UI
-    // =====================================================================
-    function bindSlider(id, key, vid, p) {
-      const e=document.getElementById(id), v=document.getElementById(vid);
-      e.addEventListener('input',()=>{params[key]=p?p(e.value):parseFloat(e.value);v.textContent=e.value;});
-    }
-    function regen() { lightAngle=0; generateNetwork(width||windowWidth,height||windowHeight); }
-
-    window.addEventListener('DOMContentLoaded', () => {
-      bindSlider('ctrl-neurons','neuronCount','val-neurons',v=>parseInt(v));
-      bindSlider('ctrl-depth','branchDepth','val-depth',v=>parseInt(v));
-      bindSlider('ctrl-spread','branchSpread','val-spread',v=>parseInt(v));
-      bindSlider('ctrl-density','lineDensity','val-density');
-      bindSlider('ctrl-speed','lightSpeed','val-speed');
-      bindSlider('ctrl-glow','glowWidth','val-glow',v=>parseInt(v));
-      bindSlider('ctrl-decay','decayRate','val-decay');
-      bindSlider('ctrl-bloom','bloomIntensity','val-bloom');
-      ['ctrl-neurons','ctrl-depth','ctrl-spread','ctrl-density'].forEach(id=>
-        document.getElementById(id).addEventListener('change',regen));
-      document.getElementById('color-mode').addEventListener('change',e=>{colorMode=e.target.value;regen();});
-      document.getElementById('seed-random').addEventListener('click',()=>{currentSeed=Math.random()*999999|0;document.getElementById('seed-input').value=currentSeed;regen();});
-      document.getElementById('seed-prev').addEventListener('click',()=>{currentSeed=Math.max(0,currentSeed-1);document.getElementById('seed-input').value=currentSeed;regen();});
-      document.getElementById('seed-next').addEventListener('click',()=>{currentSeed++;document.getElementById('seed-input').value=currentSeed;regen();});
-      document.getElementById('seed-input').addEventListener('change',e=>{currentSeed=parseInt(e.target.value)||0;regen();});
-      document.getElementById('btn-regen').addEventListener('click',()=>{currentSeed=Math.random()*999999|0;document.getElementById('seed-input').value=currentSeed;regen();});
-      document.getElementById('btn-reset').addEventListener('click',()=>{
-        params={...DEFAULTS};
-        ['neurons','depth','spread','density','speed','glow','decay','bloom'].forEach((k,i)=>{
-          const ids=['ctrl-neurons','ctrl-depth','ctrl-spread','ctrl-density','ctrl-speed','ctrl-glow','ctrl-decay','ctrl-bloom'];
-          const vals=[DEFAULTS.neuronCount,DEFAULTS.branchDepth,DEFAULTS.branchSpread,DEFAULTS.lineDensity,DEFAULTS.lightSpeed,DEFAULTS.glowWidth,DEFAULTS.decayRate,DEFAULTS.bloomIntensity];
-          document.getElementById(ids[i]).value=vals[i];document.getElementById('val-'+k).textContent=vals[i];
-        });
-        colorMode='gold';document.getElementById('color-mode').value='gold';regen();
-      });
-      document.getElementById('btn-download').addEventListener('click',()=>saveCanvas('neural-scintillation-'+currentSeed,'png'));
-      document.getElementById('sidebar-toggle').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('hidden'));
-    });
-  </script>
+// ======================== UI ========================
+function bs(id,k,vid,p){const e=document.getElementById(id),v=document.getElementById(vid);e.addEventListener('input',()=>{P[k]=p?p(e.value):parseFloat(e.value);v.textContent=e.value;});}
+window.addEventListener('DOMContentLoaded',()=>{
+  bs('cn','neuronCount','vn',v=>+v);bs('cd','branchDepth','vd',v=>+v);bs('css','branchSpread','vs',v=>+v);
+  bs('cl2','lineDensity','vl');bs('csp','lightSpeed','vsp');bs('cg2','glowWidth','vg',v=>+v);
+  bs('cdc','decayRate','vdc');bs('cb','bloomIntensity','vb');
+  ['cn','cd','css','cl2'].forEach(id=>document.getElementById(id).addEventListener('change',regen));
+  document.getElementById('cm').addEventListener('change',e=>{colorMode=+e.target.value;regen();});
+  document.getElementById('sr2').addEventListener('click',()=>{seed=Math.random()*999999|0;document.getElementById('seed').value=seed;regen();});
+  document.getElementById('sp').addEventListener('click',()=>{seed=Math.max(0,seed-1);document.getElementById('seed').value=seed;regen();});
+  document.getElementById('sn').addEventListener('click',()=>{seed++;document.getElementById('seed').value=seed;regen();});
+  document.getElementById('seed').addEventListener('change',e=>{seed=parseInt(e.target.value)||0;regen();});
+  document.getElementById('rg').addEventListener('click',()=>{seed=Math.random()*999999|0;document.getElementById('seed').value=seed;regen();});
+  document.getElementById('rs').addEventListener('click',()=>{
+    P={...D};colorMode=0;document.getElementById('cm').value='0';
+    [['cn',D.neuronCount,'vn'],['cd',D.branchDepth,'vd'],['css',D.branchSpread,'vs'],['cl2',D.lineDensity,'vl'],['csp',D.lightSpeed,'vsp'],['cg2',D.glowWidth,'vg'],['cdc',D.decayRate,'vdc'],['cb',D.bloomIntensity,'vb']].forEach(([id,v,vid])=>{document.getElementById(id).value=v;document.getElementById(vid).textContent=v;});
+    regen();
+  });
+  document.getElementById('dl').addEventListener('click',()=>{gl.canvas.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='neural-scintillation-'+seed+'.png';a.click();});});
+  document.getElementById('tog').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('hidden'));
+  fullInit();
+});
+</script>
 </body>
 </html>
