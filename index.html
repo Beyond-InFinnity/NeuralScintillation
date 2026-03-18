@@ -12,7 +12,7 @@
   <meta name="twitter:title" content="Neural Scintillation — Auric Dendriticism">
   <meta name="twitter:description" content="Anisotropic light simulation on procedural neural geometry. Generative art by Connor.">
   <meta name="description" content="Anisotropic light simulation on procedural neural geometry. Generative art by Connor Finnerty.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0a'/><circle cx='16' cy='16' r='4' fill='%23d4a017'/><line x1='16' y1='4' x2='16' y2='10' stroke='%23d4a017' stroke-width='1.5' stroke-linecap='round'/><line x1='16' y1='22' x2='16' y2='28' stroke='%23d4a017' stroke-width='1.5' stroke-linecap='round'/><line x1='4' y1='16' x2='10' y2='16' stroke='%23d4a017' stroke-width='1.5' stroke-linecap='round'/><line x1='22' y1='16' x2='28' y2='16' stroke='%23d4a017' stroke-width='1.5' stroke-linecap='round'/><line x1='7.5' y1='7.5' x2='11.8' y2='11.8' stroke='%23d4a017' stroke-width='1.2' stroke-linecap='round'/><line x1='20.2' y1='20.2' x2='24.5' y2='24.5' stroke='%23d4a017' stroke-width='1.2' stroke-linecap='round'/><line x1='24.5' y1='7.5' x2='20.2' y2='11.8' stroke='%23d4a017' stroke-width='1.2' stroke-linecap='round'/><line x1='11.8' y1='20.2' x2='7.5' y2='24.5' stroke='%23d4a017' stroke-width='1.2' stroke-linecap='round'/></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0a'/><circle cx='16' cy='16' r='4' fill='%23c9a84c'/><line x1='16' y1='4' x2='16' y2='10' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='16' y1='22' x2='16' y2='28' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='4' y1='16' x2='10' y2='16' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='22' y1='16' x2='28' y2='16' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round'/><line x1='7.5' y1='7.5' x2='11.8' y2='11.8' stroke='%23c9a84c' stroke-width='1.2' stroke-linecap='round'/><line x1='20.2' y1='20.2' x2='24.5' y2='24.5' stroke='%23c9a84c' stroke-width='1.2' stroke-linecap='round'/><line x1='24.5' y1='7.5' x2='20.2' y2='11.8' stroke='%23c9a84c' stroke-width='1.2' stroke-linecap='round'/><line x1='11.8' y1='20.2' x2='7.5' y2='24.5' stroke='%23c9a84c' stroke-width='1.2' stroke-linecap='round'/></svg>">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,7 +26,14 @@
       height: 100%;
       z-index: 0;
     }
-    #canvas-container canvas { display: block; }
+    #canvas-container canvas { display: block; position: absolute; top: 0; left: 0; }
+
+    #bloom-canvas {
+      pointer-events: none;
+      filter: blur(6px);
+      mix-blend-mode: screen;
+      z-index: 1;
+    }
 
     #sidebar {
       position: fixed;
@@ -35,7 +42,7 @@
       width: 280px;
       height: 100%;
       background: rgba(10, 10, 10, 0.92);
-      border-left: 1px solid rgba(212, 160, 23, 0.15);
+      border-left: 1px solid rgba(201, 168, 76, 0.15);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       z-index: 10;
@@ -52,8 +59,8 @@
       right: 16px;
       z-index: 20;
       background: rgba(10, 10, 10, 0.8);
-      border: 1px solid rgba(212, 160, 23, 0.3);
-      color: #d4a017;
+      border: 1px solid rgba(201, 168, 76, 0.3);
+      color: #c9a84c;
       width: 36px;
       height: 36px;
       border-radius: 6px;
@@ -64,43 +71,41 @@
       justify-content: center;
       transition: all 0.2s;
     }
-    #sidebar-toggle:hover { background: rgba(212, 160, 23, 0.15); }
+    #sidebar-toggle:hover { background: rgba(201, 168, 76, 0.15); }
     #sidebar:not(.hidden) ~ #sidebar-toggle { right: 290px; }
 
     .sidebar-title {
       font-size: 13px;
       letter-spacing: 2px;
       text-transform: uppercase;
-      color: #d4a017;
+      color: #c9a84c;
       margin-bottom: 4px;
     }
     .sidebar-subtitle {
       font-size: 10px;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: rgba(212, 160, 23, 0.5);
+      color: rgba(201, 168, 76, 0.5);
       margin-bottom: 20px;
     }
 
-    .control-group {
-      margin-bottom: 16px;
-    }
+    .control-group { margin-bottom: 16px; }
     .control-label {
       font-size: 10px;
       letter-spacing: 1px;
       text-transform: uppercase;
-      color: rgba(212, 160, 23, 0.6);
+      color: rgba(201, 168, 76, 0.6);
       margin-bottom: 6px;
       display: flex;
       justify-content: space-between;
     }
-    .control-label span.val { color: #d4a017; }
+    .control-label span.val { color: #c9a84c; }
 
     input[type="range"] {
       -webkit-appearance: none;
       width: 100%;
       height: 3px;
-      background: rgba(212, 160, 23, 0.15);
+      background: rgba(201, 168, 76, 0.15);
       border-radius: 2px;
       outline: none;
     }
@@ -109,14 +114,14 @@
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: #d4a017;
+      background: #c9a84c;
       cursor: pointer;
     }
     input[type="range"]::-moz-range-thumb {
       width: 12px;
       height: 12px;
       border-radius: 50%;
-      background: #d4a017;
+      background: #c9a84c;
       border: none;
       cursor: pointer;
     }
@@ -129,21 +134,21 @@
     }
     .seed-input {
       flex: 1;
-      background: rgba(212, 160, 23, 0.08);
-      border: 1px solid rgba(212, 160, 23, 0.2);
-      color: #d4a017;
+      background: rgba(201, 168, 76, 0.08);
+      border: 1px solid rgba(201, 168, 76, 0.2);
+      color: #c9a84c;
       padding: 6px 10px;
       border-radius: 4px;
       font-family: 'Courier New', monospace;
       font-size: 12px;
       outline: none;
     }
-    .seed-input:focus { border-color: rgba(212, 160, 23, 0.5); }
+    .seed-input:focus { border-color: rgba(201, 168, 76, 0.5); }
 
     .btn {
-      background: rgba(212, 160, 23, 0.1);
-      border: 1px solid rgba(212, 160, 23, 0.25);
-      color: #d4a017;
+      background: rgba(201, 168, 76, 0.1);
+      border: 1px solid rgba(201, 168, 76, 0.25);
+      color: #c9a84c;
       padding: 8px 14px;
       border-radius: 4px;
       cursor: pointer;
@@ -153,19 +158,14 @@
       text-transform: uppercase;
       transition: all 0.15s;
     }
-    .btn:hover { background: rgba(212, 160, 23, 0.2); border-color: rgba(212, 160, 23, 0.5); }
+    .btn:hover { background: rgba(201, 168, 76, 0.2); border-color: rgba(201, 168, 76, 0.5); }
 
-    .btn-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-    }
+    .btn-row { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
     .btn-row .btn { flex: 1; text-align: center; min-width: 70px; }
 
     .mode-toggle {
       display: flex;
-      border: 1px solid rgba(212, 160, 23, 0.2);
+      border: 1px solid rgba(201, 168, 76, 0.2);
       border-radius: 4px;
       overflow: hidden;
       margin-bottom: 16px;
@@ -174,7 +174,7 @@
       flex: 1;
       background: transparent;
       border: none;
-      color: rgba(212, 160, 23, 0.4);
+      color: rgba(201, 168, 76, 0.4);
       padding: 8px;
       cursor: pointer;
       font-family: 'Courier New', monospace;
@@ -184,24 +184,28 @@
       transition: all 0.15s;
     }
     .mode-toggle button.active {
-      background: rgba(212, 160, 23, 0.15);
-      color: #d4a017;
+      background: rgba(201, 168, 76, 0.15);
+      color: #c9a84c;
     }
 
-    .divider {
-      border: none;
-      border-top: 1px solid rgba(212, 160, 23, 0.1);
-      margin: 16px 0;
-    }
+    .divider { border: none; border-top: 1px solid rgba(201, 168, 76, 0.1); margin: 16px 0; }
 
     .embed-mode #sidebar,
     .embed-mode #sidebar-toggle { display: none !important; }
+
+    .seg-count {
+      font-size: 10px;
+      color: rgba(201, 168, 76, 0.3);
+      margin-top: 12px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
   </style>
 </head>
 <body>
   <div id="canvas-container"></div>
 
-  <button id="sidebar-toggle" title="Toggle controls">☰</button>
+  <button id="sidebar-toggle" title="Toggle controls">&#9776;</button>
   <div id="sidebar">
     <div class="sidebar-title">Neural Scintillation</div>
     <div class="sidebar-subtitle">Auric Dendriticism</div>
@@ -211,7 +215,9 @@
     <div class="control-label" style="margin-bottom: 6px;">Seed</div>
     <div class="seed-row">
       <input type="text" id="seed-input" class="seed-input" placeholder="Random seed">
-      <button class="btn" id="seed-random" title="Random seed">⟳</button>
+      <button class="btn" id="seed-prev" title="Previous seed">&#8592;</button>
+      <button class="btn" id="seed-next" title="Next seed">&#8594;</button>
+      <button class="btn" id="seed-random" title="Random seed">&#x27F3;</button>
     </div>
 
     <div class="mode-toggle">
@@ -222,36 +228,36 @@
     <hr class="divider">
 
     <div class="control-group">
-      <div class="control-label">Soma Count <span class="val" id="val-soma">12</span></div>
-      <input type="range" id="ctrl-soma" min="4" max="30" value="12" step="1">
+      <div class="control-label">Neuron Count <span class="val" id="val-neurons">18</span></div>
+      <input type="range" id="ctrl-neurons" min="5" max="40" value="18" step="1">
     </div>
     <div class="control-group">
       <div class="control-label">Branch Depth <span class="val" id="val-depth">5</span></div>
       <input type="range" id="ctrl-depth" min="2" max="8" value="5" step="1">
     </div>
     <div class="control-group">
-      <div class="control-label">Branch Factor <span class="val" id="val-branch">0.65</span></div>
-      <input type="range" id="ctrl-branch" min="0.2" max="1.0" value="0.65" step="0.05">
+      <div class="control-label">Branch Spread <span class="val" id="val-spread">22</span>&deg;</div>
+      <input type="range" id="ctrl-spread" min="5" max="45" value="22" step="1">
     </div>
     <div class="control-group">
-      <div class="control-label">Segment Length <span class="val" id="val-seglen">28</span></div>
-      <input type="range" id="ctrl-seglen" min="10" max="60" value="28" step="2">
+      <div class="control-label">Line Density <span class="val" id="val-density">1.5</span></div>
+      <input type="range" id="ctrl-density" min="0.5" max="3.0" value="1.5" step="0.1">
     </div>
     <div class="control-group">
-      <div class="control-label">Noise Scale <span class="val" id="val-noise">0.008</span></div>
-      <input type="range" id="ctrl-noise" min="0.002" max="0.025" value="0.008" step="0.001">
+      <div class="control-label">Light Speed <span class="val" id="val-speed">0.8</span>&deg;/f</div>
+      <input type="range" id="ctrl-speed" min="0.1" max="3.0" value="0.8" step="0.1">
     </div>
     <div class="control-group">
-      <div class="control-label">Light Speed <span class="val" id="val-speed">1.20</span></div>
-      <input type="range" id="ctrl-speed" min="0.2" max="3.0" value="1.2" step="0.1">
+      <div class="control-label">Glow Width <span class="val" id="val-glow">25</span>&deg;</div>
+      <input type="range" id="ctrl-glow" min="5" max="60" value="25" step="1">
     </div>
     <div class="control-group">
-      <div class="control-label">Decay Rate <span class="val" id="val-decay">0.92</span></div>
-      <input type="range" id="ctrl-decay" min="0.80" max="0.98" value="0.92" step="0.01">
+      <div class="control-label">Decay Rate <span class="val" id="val-decay">0.88</span></div>
+      <input type="range" id="ctrl-decay" min="0.70" max="0.99" value="0.88" step="0.01">
     </div>
     <div class="control-group">
-      <div class="control-label">Bloom Intensity <span class="val" id="val-bloom">0.45</span></div>
-      <input type="range" id="ctrl-bloom" min="0.0" max="1.0" value="0.45" step="0.05">
+      <div class="control-label">Bloom Intensity <span class="val" id="val-bloom">0.40</span></div>
+      <input type="range" id="ctrl-bloom" min="0.0" max="1.0" value="0.40" step="0.05">
     </div>
 
     <hr class="divider">
@@ -261,111 +267,113 @@
       <button class="btn" id="btn-reset">Reset</button>
     </div>
     <div class="btn-row">
-      <button class="btn" id="btn-download">Download Frame</button>
+      <button class="btn" id="btn-download">Download PNG</button>
     </div>
+
+    <div class="seg-count" id="seg-count"></div>
   </div>
 
   <script>
-    // --- Embed mode detection ---
+    // --- Embed mode ---
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('embed') === 'true') {
       document.body.classList.add('embed-mode');
     }
 
-    // --- Parameters ---
-    let params = {
-      somaCount: 12,
+    // =========================================================================
+    // PARAMETERS — defaults from spec
+    // =========================================================================
+    const DEFAULTS = {
+      neuronCount: 18,
       branchDepth: 5,
-      branchFactor: 0.65,
-      segmentLength: 28,
-      noiseScale: 0.008,
-      lightSpeed: 1.2,
-      decayRate: 0.92,
-      bloomIntensity: 0.45
+      branchSpread: 22,    // degrees
+      lineDensity: 1.5,
+      lightSpeed: 0.8,     // degrees per frame
+      glowWidth: 25,       // degrees (sigma)
+      decayRate: 0.88,
+      bloomIntensity: 0.40
     };
 
+    let params = { ...DEFAULTS };
     let colorMode = 'gold';
     let currentSeed = Math.floor(Math.random() * 999999);
-    let segments = [];
-    let lightPhase = 0;
-    let bloomBuffer;
-    let mainCanvas;
 
-    // --- Color palettes ---
-    const palettes = {
-      gold: {
-        base: [212, 160, 23],
-        bright: [255, 215, 60],
-        dim: [140, 100, 10],
-        soma: [255, 200, 40]
-      },
-      signal: {
-        base: [40, 180, 220],
-        bright: [100, 240, 255],
-        dim: [15, 80, 120],
-        soma: [60, 220, 255]
-      }
-    };
+    // =========================================================================
+    // GEOMETRY STORAGE — generated once, immutable until regenerate
+    // =========================================================================
+    let segments = [];     // { x1, y1, x2, y2, nx, ny, thick }
+    let brightness = null; // Float32Array, same length as segments
+    let somaList = [];     // { x, y, nearSegStart, nearSegEnd }
+    let lightAngle = 0;    // radians, current sweep position
 
-    // --- Poisson Disk Sampling ---
-    function poissonDiskSample(width, height, minDist, count, rng) {
+    // Bloom canvas (raw, CSS-blurred)
+    let bloomCanvas, bloomCtx;
+
+    // =========================================================================
+    // SEEDED RNG — mulberry32
+    // =========================================================================
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        let t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    // =========================================================================
+    // POISSON DISK SAMPLING
+    // =========================================================================
+    function poissonDiskSample(w, h, minDist, count, rng) {
       const points = [];
       const cellSize = minDist / Math.SQRT2;
-      const gridW = Math.ceil(width / cellSize);
-      const gridH = Math.ceil(height / cellSize);
-      const grid = new Array(gridW * gridH).fill(-1);
+      const gridW = Math.ceil(w / cellSize);
+      const gridH = Math.ceil(h / cellSize);
+      const grid = new Int32Array(gridW * gridH).fill(-1);
       const active = [];
 
-      function gridIdx(x, y) {
-        return Math.floor(x / cellSize) + Math.floor(y / cellSize) * gridW;
-      }
-
-      const margin = minDist * 0.5;
-      const x0 = margin + rng() * (width - 2 * margin);
-      const y0 = margin + rng() * (height - 2 * margin);
+      const margin = minDist * 0.4;
+      const x0 = margin + rng() * (w - 2 * margin);
+      const y0 = margin + rng() * (h - 2 * margin);
       points.push({ x: x0, y: y0 });
       active.push(0);
-      grid[gridIdx(x0, y0)] = 0;
+      grid[Math.floor(x0 / cellSize) + Math.floor(y0 / cellSize) * gridW] = 0;
 
-      while (active.length > 0 && points.length < count) {
+      while (active.length > 0 && points.length < count * 3) {
         const ai = Math.floor(rng() * active.length);
-        const pi = active[ai];
-        const p = points[pi];
+        const p = points[active[ai]];
         let found = false;
 
         for (let attempt = 0; attempt < 30; attempt++) {
-          const angle = rng() * Math.PI * 2;
+          const ang = rng() * Math.PI * 2;
           const dist = minDist + rng() * minDist;
-          const nx = p.x + Math.cos(angle) * dist;
-          const ny = p.y + Math.sin(angle) * dist;
+          const nx = p.x + Math.cos(ang) * dist;
+          const ny = p.y + Math.sin(ang) * dist;
 
-          if (nx < margin || nx >= width - margin || ny < margin || ny >= height - margin) continue;
+          if (nx < margin || nx >= w - margin || ny < margin || ny >= h - margin) continue;
 
-          const gi = gridIdx(nx, ny);
           const gx = Math.floor(nx / cellSize);
           const gy = Math.floor(ny / cellSize);
           let ok = true;
 
-          for (let dy = -2; dy <= 2 && ok; dy++) {
-            for (let dx = -2; dx <= 2 && ok; dx++) {
-              const cx = gx + dx;
-              const cy = gy + dy;
+          outer:
+          for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+              const cx = gx + dx, cy = gy + dy;
               if (cx < 0 || cx >= gridW || cy < 0 || cy >= gridH) continue;
-              const ci = cx + cy * gridW;
-              if (grid[ci] !== -1) {
-                const other = points[grid[ci]];
-                const ddx = nx - other.x;
-                const ddy = ny - other.y;
-                if (ddx * ddx + ddy * ddy < minDist * minDist) ok = false;
+              const ci = grid[cx + cy * gridW];
+              if (ci !== -1) {
+                const ddx = nx - points[ci].x, ddy = ny - points[ci].y;
+                if (ddx * ddx + ddy * ddy < minDist * minDist) { ok = false; break outer; }
               }
             }
           }
 
           if (ok) {
+            const ni = points.length;
             points.push({ x: nx, y: ny });
-            const ni = points.length - 1;
             active.push(ni);
-            grid[gi] = ni;
+            grid[gx + gy * gridW] = ni;
             found = true;
             break;
           }
@@ -377,236 +385,306 @@
       return points.slice(0, count);
     }
 
-    // --- Seeded RNG (mulberry32) ---
-    function mulberry32(a) {
-      return function() {
-        a |= 0; a = a + 0x6D2B79F5 | 0;
-        let t = Math.imul(a ^ a >>> 15, 1 | a);
-        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-      };
-    }
-
-    // --- Generate neural geometry ---
-    function generateNetwork() {
+    // =========================================================================
+    // GEOMETRY GENERATION — runs once per seed/param change
+    // =========================================================================
+    function generateNetwork(cw, ch) {
       segments = [];
+      somaList = [];
       const rng = mulberry32(currentSeed);
-      const cw = mainCanvas ? mainCanvas.width : windowWidth;
-      const ch = mainCanvas ? mainCanvas.height : windowHeight;
 
-      const minDist = Math.min(cw, ch) / (Math.sqrt(params.somaCount) * 1.2);
-      const somas = poissonDiskSample(cw, ch, minDist, params.somaCount, rng);
+      // Seed p5's noise for Perlin sampling
+      noiseSeed(currentSeed);
+
+      const minDist = Math.min(cw, ch) / (Math.sqrt(params.neuronCount) * 1.1);
+      const somas = poissonDiskSample(cw, ch, minDist, params.neuronCount, rng);
+
+      // Base segment length scales with canvas
+      const baseLen = Math.min(cw, ch) * 0.12;
 
       for (const soma of somas) {
+        const segStart = segments.length;
+        // 3-6 primary axons per soma
         const numPrimary = 3 + Math.floor(rng() * 4);
         for (let i = 0; i < numPrimary; i++) {
-          const angle = (i / numPrimary) * Math.PI * 2 + (rng() - 0.5) * 0.8;
-          growBranch(soma.x, soma.y, angle, params.segmentLength, params.branchDepth, 2.5, rng);
+          const angle = (i / numPrimary) * Math.PI * 2 + (rng() - 0.5) * 0.6;
+          growBranch(soma.x, soma.y, angle, baseLen, params.branchDepth, 2.2, rng);
         }
+        somaList.push({ x: soma.x, y: soma.y, segStart, segEnd: segments.length });
       }
 
-      // Assign cumulative distances for light propagation
-      // Each segment gets a distance from its tree root
-      let treeStart = 0;
-      let totalDist = 0;
-      for (const seg of segments) {
-        seg.distFromRoot = totalDist;
-        totalDist += seg.len;
-        if (seg.isTerminal) {
-          totalDist += params.segmentLength * 2; // gap between trees
-        }
-      }
+      // Allocate brightness array
+      brightness = new Float32Array(segments.length);
 
-      return somas;
+      document.getElementById('seg-count').textContent = segments.length.toLocaleString() + ' segments';
     }
 
     function growBranch(x, y, angle, length, depth, thickness, rng) {
-      if (depth <= 0 || thickness < 0.3) return;
+      if (depth <= 0 || thickness < 0.15) return;
 
-      const steps = Math.max(2, Math.round(length / 6));
+      // Number of sub-segments per branch — controlled by line density
+      const numSubs = Math.max(3, Math.round(length / (8 / params.lineDensity)));
+      const stepLen = length / numSubs;
+
       let cx = x, cy = y;
       let cAngle = angle;
 
-      for (let i = 0; i < steps; i++) {
-        const stepLen = length / steps;
-        const noiseVal = noise(cx * params.noiseScale, cy * params.noiseScale, currentSeed * 0.01);
-        cAngle += (noiseVal - 0.5) * 1.2;
+      for (let i = 0; i < numSubs; i++) {
+        // Perlin noise perturbation for organic curvature
+        const noiseVal = noise(cx * 0.005, cy * 0.005, currentSeed * 0.001);
+        cAngle += (noiseVal - 0.5) * 0.8;
 
         const nx = cx + Math.cos(cAngle) * stepLen;
         const ny = cy + Math.sin(cAngle) * stepLen;
 
-        // Compute segment normal (perpendicular to direction)
+        // Pre-compute unit normal (perpendicular to segment direction)
         const dx = nx - cx;
         const dy = ny - cy;
-        const len = Math.sqrt(dx * dx + dy * dy);
-        const normalX = -dy / (len || 1);
-        const normalY = dx / (len || 1);
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
 
         segments.push({
-          x1: cx, y1: cy, x2: nx, y2: ny,
-          normalX, normalY,
-          thickness: thickness * (1 - i / (steps * 2)),
-          len: stepLen,
-          depth,
-          brightness: 0,
-          isTerminal: false
+          x1: cx, y1: cy,
+          x2: nx, y2: ny,
+          nx: -dy / len,  // normal X
+          ny: dx / len,   // normal Y
+          thick: thickness * (1 - (i / numSubs) * 0.3)
         });
 
         cx = nx;
         cy = ny;
       }
 
-      // Mark last segment as terminal if no children will branch
-      const willBranch = rng() < params.branchFactor && depth > 1;
-      const willBranch2 = rng() < params.branchFactor * 0.6 && depth > 1;
+      // Branch into 2-4 children
+      if (depth > 1) {
+        const spreadRad = params.branchSpread * Math.PI / 180;
+        // Always produce at least 2 children; sometimes 3-4
+        const numChildren = 2 + (rng() < 0.4 ? 1 : 0) + (rng() < 0.15 ? 1 : 0);
+        const childLen = length * (0.65 + rng() * 0.15);
+        const childThick = thickness * (0.62 + rng() * 0.1);
 
-      if (!willBranch && !willBranch2 && segments.length > 0) {
-        segments[segments.length - 1].isTerminal = true;
-      }
-
-      if (willBranch) {
-        const spread = 0.3 + rng() * 0.5;
-        growBranch(cx, cy, cAngle - spread, length * 0.72, depth - 1, thickness * 0.7, rng);
-      }
-      if (willBranch2) {
-        const spread = 0.3 + rng() * 0.5;
-        growBranch(cx, cy, cAngle + spread, length * 0.72, depth - 1, thickness * 0.7, rng);
+        for (let c = 0; c < numChildren; c++) {
+          // Distribute children across the spread range
+          const t = numChildren === 1 ? 0 : (c / (numChildren - 1)) * 2 - 1; // -1 to +1
+          const childAngle = cAngle + t * spreadRad + (rng() - 0.5) * spreadRad * 0.3;
+          growBranch(cx, cy, childAngle, childLen, depth - 1, childThick, rng);
+        }
       }
     }
 
-    // --- p5.js Sketch ---
-    let somas = [];
+    // =========================================================================
+    // COLOR UTILITIES
+    // =========================================================================
+    // Gold palette: #c9a84c (base) → #fff3b0 (peak)
+    // Components: base (201,168,76) → bright (255,243,176)
+    const GOLD_BASE = [201, 168, 76];
+    const GOLD_BRIGHT = [255, 243, 176];
+    // Neural signal: amber (warm) and blue-white (cool)
+    const SIG_WARM = [220, 170, 60];
+    const SIG_WARM_BRIGHT = [255, 230, 140];
+    const SIG_COOL = [60, 140, 220];
+    const SIG_COOL_BRIGHT = [160, 220, 255];
+
+    function colorForBrightness(b, dotSign) {
+      if (colorMode === 'gold') {
+        const r = GOLD_BASE[0] + (GOLD_BRIGHT[0] - GOLD_BASE[0]) * b;
+        const g = GOLD_BASE[1] + (GOLD_BRIGHT[1] - GOLD_BASE[1]) * b;
+        const bl = GOLD_BASE[2] + (GOLD_BRIGHT[2] - GOLD_BASE[2]) * b;
+        return `rgba(${r|0},${g|0},${bl|0},${(0.15 + b * 0.85).toFixed(3)})`;
+      } else {
+        // Neural signal: warm for positive dot, cool for negative, mix in between
+        const warmMix = (dotSign + 1) * 0.5; // 0 = cool, 1 = warm
+        const base = [
+          SIG_WARM[0] * warmMix + SIG_COOL[0] * (1 - warmMix),
+          SIG_WARM[1] * warmMix + SIG_COOL[1] * (1 - warmMix),
+          SIG_WARM[2] * warmMix + SIG_COOL[2] * (1 - warmMix)
+        ];
+        const bright = [
+          SIG_WARM_BRIGHT[0] * warmMix + SIG_COOL_BRIGHT[0] * (1 - warmMix),
+          SIG_WARM_BRIGHT[1] * warmMix + SIG_COOL_BRIGHT[1] * (1 - warmMix),
+          SIG_WARM_BRIGHT[2] * warmMix + SIG_COOL_BRIGHT[2] * (1 - warmMix)
+        ];
+        const r = base[0] + (bright[0] - base[0]) * b;
+        const g = base[1] + (bright[1] - base[1]) * b;
+        const bl = base[2] + (bright[2] - base[2]) * b;
+        return `rgba(${r|0},${g|0},${bl|0},${(0.15 + b * 0.85).toFixed(3)})`;
+      }
+    }
+
+    // =========================================================================
+    // p5.js — SETUP
+    // =========================================================================
+    let mainCanvas;
 
     function setup() {
-      const isEmbed = document.body.classList.contains('embed-mode');
       const container = document.getElementById('canvas-container');
       mainCanvas = createCanvas(windowWidth, windowHeight);
       mainCanvas.parent(container);
+      pixelDensity(1);
 
-      bloomBuffer = createGraphics(Math.floor(width / 2), Math.floor(height / 2));
-      bloomBuffer.pixelDensity(1);
+      // Create bloom overlay canvas (raw HTML canvas, CSS-blurred)
+      bloomCanvas = document.createElement('canvas');
+      bloomCanvas.id = 'bloom-canvas';
+      bloomCanvas.width = Math.floor(windowWidth / 2);
+      bloomCanvas.height = Math.floor(windowHeight / 2);
+      container.appendChild(bloomCanvas);
+      bloomCtx = bloomCanvas.getContext('2d');
 
       document.getElementById('seed-input').value = currentSeed;
-      somas = generateNetwork();
+      generateNetwork(windowWidth, windowHeight);
     }
 
+    // =========================================================================
+    // p5.js — DRAW (hot loop — no geometry generation, only brightness + render)
+    // =========================================================================
+    // Pre-allocated array for dot-sign storage (for neural signal mode)
+    let dotSigns = null;
+
     function draw() {
-      const pal = palettes[colorMode];
+      const ctx = drawingContext; // raw canvas2d — no p5 overhead
+      const n = segments.length;
+      if (n === 0) return;
 
-      // --- Advance light phase ---
-      lightPhase += params.lightSpeed * 0.02;
+      // Lazy-init dotSigns array
+      if (!dotSigns || dotSigns.length !== n) {
+        dotSigns = new Float32Array(n);
+      }
 
-      // --- Rotating light direction ---
-      const lightAngle = lightPhase * 0.7;
+      // --- Advance light angle ---
+      lightAngle += params.lightSpeed * (Math.PI / 180);
+      if (lightAngle > Math.PI * 2) lightAngle -= Math.PI * 2;
+
       const lightDirX = Math.cos(lightAngle);
       const lightDirY = Math.sin(lightAngle);
 
-      // --- Update segment brightness with anisotropic response ---
-      let cumDist = 0;
-      for (const seg of segments) {
-        // Anisotropic: dot product of light direction and segment normal
-        const dot = Math.abs(seg.normalX * lightDirX + seg.normalY * lightDirY);
+      // --- Glow width: convert degrees to the sigma for our formula ---
+      // brightness = exp(-(1 - |dot|)^2 / (2*sigma^2)) * |dot|
+      // sigma is normalized: glowWidth in degrees / 90 gives a 0-1 scale
+      const sigma = (params.glowWidth / 90);
+      const invTwoSigmaSq = 1 / (2 * sigma * sigma);
 
-        // Traveling wave: Gaussian kernel centered on light wavefront
-        const waveFront = (lightPhase * 200) % (cumDist + 5000);
-        const distToWave = cumDist - waveFront;
-        const sigma = 80;
-        const waveResponse = Math.exp(-distToWave * distToWave / (2 * sigma * sigma));
+      // --- Compute brightness per segment ---
+      for (let i = 0; i < n; i++) {
+        const seg = segments[i];
+        const dot = seg.nx * lightDirX + seg.ny * lightDirY;
+        const absDot = Math.abs(dot);
+        dotSigns[i] = dot; // store signed dot for neural signal coloring
 
-        // Combine anisotropic and wave response
-        const excitation = dot * waveResponse * 2.5;
+        // Anisotropic response: Gaussian around perfect alignment
+        const deviation = 1 - absDot;
+        const instantaneous = Math.exp(-deviation * deviation * invTwoSigmaSq) * absDot;
 
-        // Temporal persistence with exponential decay
-        seg.brightness = Math.max(seg.brightness * params.decayRate, excitation);
-        seg.brightness = Math.min(seg.brightness, 1.0);
-
-        cumDist += seg.len;
-        if (seg.isTerminal) cumDist += params.segmentLength * 2;
+        // Temporal persistence: max of decayed previous and new excitation
+        brightness[i] = Math.max(brightness[i] * params.decayRate, instantaneous);
       }
 
-      // --- Draw to main canvas ---
-      background(10, 10, 10);
+      // --- Clear main canvas ---
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, width, height);
 
-      // Draw segments
-      for (const seg of segments) {
-        if (seg.brightness < 0.005) continue;
+      // --- Draw segments with additive blending ---
+      ctx.globalCompositeOperation = 'screen';
+      ctx.lineCap = 'round';
 
-        const b = seg.brightness;
-        const r = lerp(pal.dim[0], pal.bright[0], b);
-        const g = lerp(pal.dim[1], pal.bright[1], b);
-        const bl = lerp(pal.dim[2], pal.bright[2], b);
+      for (let i = 0; i < n; i++) {
+        const b = brightness[i];
+        if (b < 0.008) continue; // skip invisible segments
 
-        stroke(r, g, bl, 40 + b * 215);
-        strokeWeight(seg.thickness * (0.6 + b * 0.8));
-        line(seg.x1, seg.y1, seg.x2, seg.y2);
-
-        // Bright glow core
-        if (b > 0.3) {
-          stroke(pal.bright[0], pal.bright[1], pal.bright[2], b * 120);
-          strokeWeight(seg.thickness * 0.3 * b);
-          line(seg.x1, seg.y1, seg.x2, seg.y2);
-        }
+        const seg = segments[i];
+        ctx.strokeStyle = colorForBrightness(b, dotSigns[i]);
+        ctx.lineWidth = seg.thick * (0.4 + b * 1.0);
+        ctx.beginPath();
+        ctx.moveTo(seg.x1, seg.y1);
+        ctx.lineTo(seg.x2, seg.y2);
+        ctx.stroke();
       }
 
-      // Draw soma nodes
-      noStroke();
-      for (const soma of somas) {
-        // Find max brightness near this soma
+      // --- Draw soma nodes ---
+      ctx.globalCompositeOperation = 'screen';
+      for (const soma of somaList) {
+        // Find max brightness among nearby segments
         let maxB = 0;
-        for (const seg of segments) {
-          const dx = seg.x1 - soma.x;
-          const dy = seg.y1 - soma.y;
-          if (dx * dx + dy * dy < 400) {
-            maxB = Math.max(maxB, seg.brightness);
-          }
+        const end = Math.min(soma.segEnd, soma.segStart + 30); // only check first few
+        for (let i = soma.segStart; i < end; i++) {
+          if (brightness[i] > maxB) maxB = brightness[i];
         }
-        const alpha = 30 + maxB * 200;
-        fill(pal.soma[0], pal.soma[1], pal.soma[2], alpha);
-        circle(soma.x, soma.y, 5 + maxB * 4);
+        if (maxB < 0.02) continue;
 
-        if (maxB > 0.4) {
-          fill(pal.soma[0], pal.soma[1], pal.soma[2], maxB * 60);
-          circle(soma.x, soma.y, 12 + maxB * 10);
+        const alpha = maxB;
+        if (colorMode === 'gold') {
+          const r = GOLD_BASE[0] + (GOLD_BRIGHT[0] - GOLD_BASE[0]) * maxB;
+          const g = GOLD_BASE[1] + (GOLD_BRIGHT[1] - GOLD_BASE[1]) * maxB;
+          const bl = GOLD_BASE[2] + (GOLD_BRIGHT[2] - GOLD_BASE[2]) * maxB;
+          ctx.fillStyle = `rgba(${r|0},${g|0},${bl|0},${alpha.toFixed(3)})`;
+        } else {
+          ctx.fillStyle = `rgba(200,200,220,${alpha.toFixed(3)})`;
+        }
+        ctx.beginPath();
+        ctx.arc(soma.x, soma.y, 2.5 + maxB * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Glow halo for bright soma
+        if (maxB > 0.35) {
+          ctx.fillStyle = `rgba(255,243,176,${(maxB * 0.25).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(soma.x, soma.y, 6 + maxB * 8, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
 
-      // --- Bloom pass (half resolution) ---
+      // --- Bloom pass: draw bright segments to half-res CSS-blurred canvas ---
       if (params.bloomIntensity > 0.01) {
-        bloomBuffer.clear();
-        bloomBuffer.background(0, 0);
-        bloomBuffer.scale(0.5);
+        const bw = bloomCanvas.width;
+        const bh = bloomCanvas.height;
+        const scaleX = bw / width;
+        const scaleY = bh / height;
 
-        for (const seg of segments) {
-          if (seg.brightness < 0.15) continue;
-          const b = seg.brightness;
-          bloomBuffer.stroke(
-            pal.bright[0], pal.bright[1], pal.bright[2],
-            b * 80 * params.bloomIntensity
-          );
-          bloomBuffer.strokeWeight(seg.thickness * 3 * b);
-          bloomBuffer.line(seg.x1, seg.y1, seg.x2, seg.y2);
+        bloomCtx.clearRect(0, 0, bw, bh);
+        bloomCtx.globalCompositeOperation = 'screen';
+        bloomCtx.lineCap = 'round';
+        bloomCtx.globalAlpha = params.bloomIntensity * 0.45;
+
+        for (let i = 0; i < n; i++) {
+          const b = brightness[i];
+          if (b < 0.12) continue;
+
+          const seg = segments[i];
+
+          if (colorMode === 'gold') {
+            const r = GOLD_BRIGHT[0];
+            const g = GOLD_BRIGHT[1];
+            const bl = GOLD_BRIGHT[2];
+            bloomCtx.strokeStyle = `rgba(${r},${g},${bl},${(b * 0.8).toFixed(3)})`;
+          } else {
+            bloomCtx.strokeStyle = colorForBrightness(b, dotSigns[i]);
+          }
+          bloomCtx.lineWidth = seg.thick * 3.5 * b * scaleX;
+          bloomCtx.beginPath();
+          bloomCtx.moveTo(seg.x1 * scaleX, seg.y1 * scaleY);
+          bloomCtx.lineTo(seg.x2 * scaleX, seg.y2 * scaleY);
+          bloomCtx.stroke();
         }
 
-        bloomBuffer.scale(2);
-        bloomBuffer.filter(BLUR, 4);
-
-        // Additive composite
-        push();
-        blendMode(ADD);
-        image(bloomBuffer, 0, 0, width, height);
-        blendMode(BLEND);
-        pop();
+        bloomCtx.globalAlpha = 1.0;
       }
+
+      // Reset composite mode
+      ctx.globalCompositeOperation = 'source-over';
     }
 
+    // =========================================================================
+    // WINDOW RESIZE
+    // =========================================================================
     function windowResized() {
       resizeCanvas(windowWidth, windowHeight);
-      bloomBuffer = createGraphics(Math.floor(width / 2), Math.floor(height / 2));
-      bloomBuffer.pixelDensity(1);
-      somas = generateNetwork();
+      bloomCanvas.width = Math.floor(windowWidth / 2);
+      bloomCanvas.height = Math.floor(windowHeight / 2);
+      generateNetwork(windowWidth, windowHeight);
     }
 
-    // --- UI Bindings ---
+    // =========================================================================
+    // UI BINDINGS
+    // =========================================================================
     function bindSlider(id, paramKey, valId, parse) {
       const el = document.getElementById(id);
       const valEl = document.getElementById(valId);
@@ -617,35 +695,48 @@
       });
     }
 
+    function regenerate() {
+      lightAngle = 0;
+      generateNetwork(width || windowWidth, height || windowHeight);
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
-      bindSlider('ctrl-soma', 'somaCount', 'val-soma', v => parseInt(v));
+      bindSlider('ctrl-neurons', 'neuronCount', 'val-neurons', v => parseInt(v));
       bindSlider('ctrl-depth', 'branchDepth', 'val-depth', v => parseInt(v));
-      bindSlider('ctrl-branch', 'branchFactor', 'val-branch');
-      bindSlider('ctrl-seglen', 'segmentLength', 'val-seglen', v => parseInt(v));
-      bindSlider('ctrl-noise', 'noiseScale', 'val-noise');
+      bindSlider('ctrl-spread', 'branchSpread', 'val-spread', v => parseInt(v));
+      bindSlider('ctrl-density', 'lineDensity', 'val-density');
       bindSlider('ctrl-speed', 'lightSpeed', 'val-speed');
+      bindSlider('ctrl-glow', 'glowWidth', 'val-glow', v => parseInt(v));
       bindSlider('ctrl-decay', 'decayRate', 'val-decay');
       bindSlider('ctrl-bloom', 'bloomIntensity', 'val-bloom');
 
-      // Regenerate on structural param change
-      ['ctrl-soma', 'ctrl-depth', 'ctrl-branch', 'ctrl-seglen', 'ctrl-noise'].forEach(id => {
-        document.getElementById(id).addEventListener('change', () => {
-          somas = generateNetwork();
-        });
+      // Regenerate on structural param change (release, not every input tick)
+      ['ctrl-neurons', 'ctrl-depth', 'ctrl-spread', 'ctrl-density'].forEach(id => {
+        document.getElementById(id).addEventListener('change', regenerate);
       });
 
-      // Seed
+      // Seed controls
       document.getElementById('seed-random').addEventListener('click', () => {
         currentSeed = Math.floor(Math.random() * 999999);
         document.getElementById('seed-input').value = currentSeed;
-        somas = generateNetwork();
+        regenerate();
+      });
+      document.getElementById('seed-prev').addEventListener('click', () => {
+        currentSeed = Math.max(0, currentSeed - 1);
+        document.getElementById('seed-input').value = currentSeed;
+        regenerate();
+      });
+      document.getElementById('seed-next').addEventListener('click', () => {
+        currentSeed++;
+        document.getElementById('seed-input').value = currentSeed;
+        regenerate();
       });
       document.getElementById('seed-input').addEventListener('change', (e) => {
         currentSeed = parseInt(e.target.value) || 0;
-        somas = generateNetwork();
+        regenerate();
       });
 
-      // Color mode toggle
+      // Color mode
       document.getElementById('mode-gold').addEventListener('click', () => {
         colorMode = 'gold';
         document.getElementById('mode-gold').classList.add('active');
@@ -657,45 +748,41 @@
         document.getElementById('mode-gold').classList.remove('active');
       });
 
-      // Buttons
+      // Action buttons
       document.getElementById('btn-regen').addEventListener('click', () => {
         currentSeed = Math.floor(Math.random() * 999999);
         document.getElementById('seed-input').value = currentSeed;
-        somas = generateNetwork();
+        regenerate();
       });
+
       document.getElementById('btn-reset').addEventListener('click', () => {
-        // Reset all params to defaults
-        params = {
-          somaCount: 12, branchDepth: 5, branchFactor: 0.65,
-          segmentLength: 28, noiseScale: 0.008, lightSpeed: 1.2,
-          decayRate: 0.92, bloomIntensity: 0.45
-        };
-        document.getElementById('ctrl-soma').value = 12;
-        document.getElementById('ctrl-depth').value = 5;
-        document.getElementById('ctrl-branch').value = 0.65;
-        document.getElementById('ctrl-seglen').value = 28;
-        document.getElementById('ctrl-noise').value = 0.008;
-        document.getElementById('ctrl-speed').value = 1.2;
-        document.getElementById('ctrl-decay').value = 0.92;
-        document.getElementById('ctrl-bloom').value = 0.45;
-        document.getElementById('val-soma').textContent = '12';
-        document.getElementById('val-depth').textContent = '5';
-        document.getElementById('val-branch').textContent = '0.65';
-        document.getElementById('val-seglen').textContent = '28';
-        document.getElementById('val-noise').textContent = '0.008';
-        document.getElementById('val-speed').textContent = '1.20';
-        document.getElementById('val-decay').textContent = '0.92';
-        document.getElementById('val-bloom').textContent = '0.45';
+        params = { ...DEFAULTS };
+        document.getElementById('ctrl-neurons').value = DEFAULTS.neuronCount;
+        document.getElementById('ctrl-depth').value = DEFAULTS.branchDepth;
+        document.getElementById('ctrl-spread').value = DEFAULTS.branchSpread;
+        document.getElementById('ctrl-density').value = DEFAULTS.lineDensity;
+        document.getElementById('ctrl-speed').value = DEFAULTS.lightSpeed;
+        document.getElementById('ctrl-glow').value = DEFAULTS.glowWidth;
+        document.getElementById('ctrl-decay').value = DEFAULTS.decayRate;
+        document.getElementById('ctrl-bloom').value = DEFAULTS.bloomIntensity;
+        document.getElementById('val-neurons').textContent = DEFAULTS.neuronCount;
+        document.getElementById('val-depth').textContent = DEFAULTS.branchDepth;
+        document.getElementById('val-spread').textContent = DEFAULTS.branchSpread;
+        document.getElementById('val-density').textContent = DEFAULTS.lineDensity;
+        document.getElementById('val-speed').textContent = DEFAULTS.lightSpeed;
+        document.getElementById('val-glow').textContent = DEFAULTS.glowWidth;
+        document.getElementById('val-decay').textContent = DEFAULTS.decayRate;
+        document.getElementById('val-bloom').textContent = DEFAULTS.bloomIntensity;
         colorMode = 'gold';
         document.getElementById('mode-gold').classList.add('active');
         document.getElementById('mode-signal').classList.remove('active');
-        somas = generateNetwork();
+        regenerate();
       });
+
       document.getElementById('btn-download').addEventListener('click', () => {
         saveCanvas('neural-scintillation-' + currentSeed, 'png');
       });
 
-      // Sidebar toggle
       document.getElementById('sidebar-toggle').addEventListener('click', () => {
         document.getElementById('sidebar').classList.toggle('hidden');
       });
