@@ -227,11 +227,20 @@ void main(){
 
 function compileShader(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;}
 
+function getVP(){
+  // More reliable than innerWidth in iframes (especially mobile Safari)
+  const w=document.documentElement.clientWidth||innerWidth;
+  const h=document.documentElement.clientHeight||innerHeight;
+  return[Math.max(w,1),Math.max(h,1)];
+}
+
 function initGL(){
   const cv=document.getElementById('cv');
-  cv.width=innerWidth;cv.height=innerHeight;
+  const[w,h]=getVP();cv.width=w;cv.height=h;
+  console.log(`[GL] init canvas ${w}x${h}, dpr=${devicePixelRatio}`);
   gl=cv.getContext('webgl2',{alpha:false,premultipliedAlpha:false,antialias:true,preserveDrawingBuffer:true});
   if(!gl){document.body.innerHTML='<p style="color:#c9a84c;padding:40px">WebGL 2 required</p>';return false;}
+  console.log(`[GL] WebGL2 context OK, renderer: ${gl.getParameter(gl.RENDERER)}`);
 
   const vs=compileShader(VS,gl.VERTEX_SHADER),fs=compileShader(FS,gl.FRAGMENT_SHADER);
   prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
@@ -364,8 +373,8 @@ function frame(t){
 
 // ======================== INIT ========================
 function fullInit(){
-  const w=innerWidth,h=innerHeight;
   if(!initGL())return;
+  const[w,h]=getVP();
   bloomEl.width=w/4|0;bloomEl.height=h/4|0;
   generate(w,h);
   uploadStatic();
@@ -405,8 +414,9 @@ window.addEventListener('message',function(e){
 });
 
 window.addEventListener('resize',()=>{
-  const w=innerWidth,h=innerHeight;
+  const[w,h]=getVP();
   gl.canvas.width=w;gl.canvas.height=h;
+  console.log(`[GL] resize ${w}x${h}`);
   bloomEl.width=w/4|0;bloomEl.height=h/4|0;
   regen();
 });
