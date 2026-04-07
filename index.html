@@ -183,16 +183,16 @@ function growD(x,y,a,len,sw,ew,dep,sp,rng,nz,ni,sx,sy){
 function addSpines(rng){const n=segN;for(let i=0;i<n;i++){if(segN>=MX)break;if(SW[i]>0.6||rng()>0.25)continue;const si=rng()>0.5?1:-1,sl=1.5+rng()*3,mx=(SX1[i]+SX2[i])*0.5,my=(SY1[i]+SY2[i])*0.5;addS(mx,my,mx+SNX[i]*si*sl,my+SNY[i]*si*sl,0.15+rng()*0.1,SNI[i]);}}
 
 // ======================== WEBGL ========================
-let gl,ext,prog,vao,staticBuf,brightBuf,quadVBO,idxBuf,neuronTex;
+let gl,extInst,extVao,prog,vao,staticBuf,brightBuf,quadVBO,idxBuf,neuronTex;
 let uRes,uLightDir,uMode,uBaseCol,uBrightCol,uNeuronTex;
 const bloomEl=document.getElementById('bloom'),bloomCtx2=bloomEl.getContext('2d');
 
-const VS=`#version 300 es
-in vec2 a_corner;
-in vec2 a_p1,a_p2,a_normal;
-in float a_width,a_nIdx,a_br;
+const VS=`
+attribute vec2 a_corner;
+attribute vec2 a_p1,a_p2,a_normal;
+attribute float a_width,a_nIdx,a_br;
 uniform vec2 u_res;
-out float v_br,v_ni;
+varying float v_br,v_ni;
 void main(){
   float b=a_br;
   if(b<0.01){gl_Position=vec4(2,2,0,1);v_br=0.0;v_ni=0.0;return;}
@@ -203,13 +203,12 @@ void main(){
   gl_Position=vec4(c,0,1);v_br=b;v_ni=a_nIdx;
 }`;
 
-const FS=`#version 300 es
+const FS=`
 precision mediump float;
-in float v_br,v_ni;
+varying float v_br,v_ni;
 uniform float u_mode;
 uniform vec3 u_baseCol,u_brightCol;
 uniform sampler2D u_neuronTex;
-out vec4 fc;
 void main(){
   if(v_br<0.005)discard;
   vec3 col;float alpha;
@@ -218,11 +217,11 @@ void main(){
     alpha=u_mode>1.5?0.08+v_br*0.72:0.12+v_br*0.88;
   }else{
     float tc=(v_ni+0.5)/64.0;
-    vec3 base=texture(u_neuronTex,vec2(tc,0.25)).rgb;
-    vec3 bright=texture(u_neuronTex,vec2(tc,0.75)).rgb;
+    vec3 base=texture2D(u_neuronTex,vec2(tc,0.25)).rgb;
+    vec3 bright=texture2D(u_neuronTex,vec2(tc,0.75)).rgb;
     col=mix(base,bright,v_br);alpha=0.12+v_br*0.88;
   }
-  fc=vec4(col,alpha);
+  gl_FragColor=vec4(col,alpha);
 }`;
 
 function compileShader(src,type){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;}
@@ -238,9 +237,12 @@ function initGL(){
   const cv=document.getElementById('cv');
   const[w,h]=getVP();cv.width=w;cv.height=h;
   console.log(`[GL] init canvas ${w}x${h}, dpr=${devicePixelRatio}`);
-  gl=cv.getContext('webgl2',{alpha:false,premultipliedAlpha:false,antialias:true,preserveDrawingBuffer:true});
-  if(!gl){document.body.innerHTML='<p style="color:#c9a84c;padding:40px">WebGL 2 required</p>';return false;}
-  console.log(`[GL] WebGL2 context OK, renderer: ${gl.getParameter(gl.RENDERER)}`);
+  gl=cv.getContext('webgl',{alpha:false,premultipliedAlpha:false,antialias:true,preserveDrawingBuffer:true});
+  if(!gl){document.body.innerHTML='<p style="color:#c9a84c;padding:40px">WebGL required</p>';return false;}
+  extInst=gl.getExtension('ANGLE_instanced_arrays');
+  extVao=gl.getExtension('OES_vertex_array_object');
+  if(!extInst||!extVao){document.body.innerHTML='<p style="color:#c9a84c;padding:40px">Required WebGL extensions not available</p>';return false;}
+  console.log(`[GL] WebGL1 context OK, renderer: ${gl.getParameter(gl.RENDERER)}`);
 
   const vs=compileShader(VS,gl.VERTEX_SHADER),fs=compileShader(FS,gl.FRAGMENT_SHADER);
   prog=gl.createProgram();gl.attachShader(prog,vs);gl.attachShader(prog,fs);gl.linkProgram(prog);
@@ -272,23 +274,23 @@ function initGL(){
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
 
   // VAO
-  vao=gl.createVertexArray();gl.bindVertexArray(vao);
+  vao=extVao.createVertexArrayOES();extVao.bindVertexArrayOES(vao);
   // Per-vertex
   gl.bindBuffer(gl.ARRAY_BUFFER,quadVBO);
   gl.enableVertexAttribArray(aCorner);gl.vertexAttribPointer(aCorner,2,gl.FLOAT,false,0,0);
   // Per-instance static (stride=32: 2+2+2+1+1 floats = 8 floats = 32 bytes)
   gl.bindBuffer(gl.ARRAY_BUFFER,staticBuf);
-  gl.enableVertexAttribArray(aP1);gl.vertexAttribPointer(aP1,2,gl.FLOAT,false,32,0);gl.vertexAttribDivisor(aP1,1);
-  gl.enableVertexAttribArray(aP2);gl.vertexAttribPointer(aP2,2,gl.FLOAT,false,32,8);gl.vertexAttribDivisor(aP2,1);
-  gl.enableVertexAttribArray(aNorm);gl.vertexAttribPointer(aNorm,2,gl.FLOAT,false,32,16);gl.vertexAttribDivisor(aNorm,1);
-  gl.enableVertexAttribArray(aW);gl.vertexAttribPointer(aW,1,gl.FLOAT,false,32,24);gl.vertexAttribDivisor(aW,1);
-  gl.enableVertexAttribArray(aNI);gl.vertexAttribPointer(aNI,1,gl.FLOAT,false,32,28);gl.vertexAttribDivisor(aNI,1);
+  gl.enableVertexAttribArray(aP1);gl.vertexAttribPointer(aP1,2,gl.FLOAT,false,32,0);extInst.vertexAttribDivisorANGLE(aP1,1);
+  gl.enableVertexAttribArray(aP2);gl.vertexAttribPointer(aP2,2,gl.FLOAT,false,32,8);extInst.vertexAttribDivisorANGLE(aP2,1);
+  gl.enableVertexAttribArray(aNorm);gl.vertexAttribPointer(aNorm,2,gl.FLOAT,false,32,16);extInst.vertexAttribDivisorANGLE(aNorm,1);
+  gl.enableVertexAttribArray(aW);gl.vertexAttribPointer(aW,1,gl.FLOAT,false,32,24);extInst.vertexAttribDivisorANGLE(aW,1);
+  gl.enableVertexAttribArray(aNI);gl.vertexAttribPointer(aNI,1,gl.FLOAT,false,32,28);extInst.vertexAttribDivisorANGLE(aNI,1);
   // Per-instance dynamic brightness
   gl.bindBuffer(gl.ARRAY_BUFFER,brightBuf);
-  gl.enableVertexAttribArray(aBr);gl.vertexAttribPointer(aBr,1,gl.FLOAT,false,0,0);gl.vertexAttribDivisor(aBr,1);
+  gl.enableVertexAttribArray(aBr);gl.vertexAttribPointer(aBr,1,gl.FLOAT,false,0,0);extInst.vertexAttribDivisorANGLE(aBr,1);
   // Index buffer
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf);
-  gl.bindVertexArray(null);
+  extVao.bindVertexArrayOES(null);
   return true;
 }
 
@@ -357,9 +359,9 @@ function frame(t){
   setColorUniforms();
   gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,neuronTex);gl.uniform1i(uNeuronTex,0);
 
-  gl.bindVertexArray(vao);
-  gl.drawElementsInstanced(gl.TRIANGLES,6,gl.UNSIGNED_SHORT,0,segN);
-  gl.bindVertexArray(null);
+  extVao.bindVertexArrayOES(vao);
+  extInst.drawElementsInstancedANGLE(gl.TRIANGLES,6,gl.UNSIGNED_SHORT,0,segN);
+  extVao.bindVertexArrayOES(null);
 
   // Bloom overlay (CSS-blurred canvas2d copy)
   if(!isGolgi&&P.bloomIntensity>0.01){
