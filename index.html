@@ -68,7 +68,13 @@
 
 <script>
 "use strict";
-if(new URLSearchParams(location.search).get('embed')==='true')document.body.classList.add('embed-mode');
+const URL_PARAMS=new URLSearchParams(location.search);
+if(URL_PARAMS.get('embed')==='true')document.body.classList.add('embed-mode');
+// Target frame rate (for iframe perf throttling). Parent passes ?fps=30 to
+// halve GPU cost. Default: no throttle (rAF-limited, typically 60).
+const FPS_PARAM=parseInt(URL_PARAMS.get('fps')||'',10);
+const FPS_TARGET=Number.isFinite(FPS_PARAM)&&FPS_PARAM>0?Math.min(120,FPS_PARAM):0;
+const FRAME_MIN_MS=FPS_TARGET>0?(1000/FPS_TARGET)-1:0; // -1ms so we don't stall on 16.6/33.3 edge cases
 
 // ======================== PARAMS ========================
 const D={neuronCount:28,branchDepth:4,branchSpread:22,lineDensity:1.2,lightSpeed:0.8,glowWidth:25,decayRate:0.88,bloomIntensity:0.40};
@@ -321,10 +327,13 @@ function setColorUniforms(){
 }
 
 // ======================== RENDER LOOP ========================
-let fc=0,lastT=0,fpsC=0;
+let fc=0,lastT=0,fpsC=0,lastRenderT=0;
 
 function frame(t){
   requestAnimationFrame(frame);
+  // Throttle to target FPS if requested via ?fps= URL param
+  if(FRAME_MIN_MS>0&&t-lastRenderT<FRAME_MIN_MS)return;
+  lastRenderT=t;
   fc++;fpsC++;
   if(t-lastT>1000){console.log(`[Perf] fps=${(fpsC*1000/(t-lastT)).toFixed(1)}, segs=${segN}`);fpsC=0;lastT=t;}
   if(!gl||segN===0)return;
